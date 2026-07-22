@@ -45,4 +45,6 @@ build/
 models/
 
 # Temporary files
-*.tmp
+*.cache/
+.temp/
+workspace/
