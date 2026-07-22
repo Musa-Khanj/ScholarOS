@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scholaros"
+version = "0.1.0"
+description = "A modular multi-agent AI research operating system."
+readme = "README.md"
+requires-python = ">=3.12"
+
+authors = [
+    { name = "Musa Khan" }
+]
+
+license = { text = "Apache-2.0" }
+
+keywords = [
+    "ai",
+    "research",
+    "agents",
+    "langgraph",
+    "computer-vision",
+    "llm",
+    "rag"
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+
+dev = [
+    "pytest>=8.4",
+    "ruff>=0.12",
+    "mypy>=1.16"
+]
+
+[tool.setuptools.packages.find]
+include = ["scholaros*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests"
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
