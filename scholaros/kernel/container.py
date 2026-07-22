@@ -1,27 +1,61 @@
 from __future__ import annotations
 
+from typing import Any
 from typing import TypeVar
 
-from scholaros.kernel.service import Service
+from scholaros.kernel.provider import ServiceProvider
 
-T = TypeVar("T", bound=Service)
+T = TypeVar("T")
 
 
 class ServiceContainer:
     def __init__(self) -> None:
-        self._services: dict[type[Service], Service] = {}
+        self._services: dict[tuple[type[Any], str | None], ServiceProvider[Any]] = {}
 
-    def add(self, service: Service) -> None:
-        self._services[type(service)] = service
+    def register(
+        self,
+        interface: type[T],
+        implementation: T,
+        *,
+        singleton: bool = True,
+        name: str | None = None,
+    ) -> None:
+        key = (interface, name)
 
-    def get(self, cls: type[T]) -> T:
-        return self._services[cls]  # type: ignore[return-value]
+        self._services[key] = ServiceProvider(
+            interface=interface,
+            implementation=implementation,
+            singleton=singleton,
+            name=name,
+        )
 
-    def has(self, cls: type[Service]) -> bool:
-        return cls in self._services
+    def resolve(
+        self,
+        interface: type[T],
+        *,
+        name: str | None = None,
+    ) -> T:
+        key = (interface, name)
 
-    def remove(self, cls: type[Service]) -> None:
-        self._services.pop(cls, None)
+        provider = self._services[key]
+
+        return provider.implementation
+
+    def registered(
+        self,
+        interface: type[Any],
+        *,
+        name: str | None = None,
+    ) -> bool:
+        return (interface, name) in self._services
+
+    def unregister(
+        self,
+        interface: type[Any],
+        *,
+        name: str | None = None,
+    ) -> None:
+        self._services.pop((interface, name), None)
 
     def clear(self) -> None:
         self._services.clear()
