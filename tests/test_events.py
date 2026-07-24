@@ -3,7 +3,7 @@ from scholaros.events import EventBus
 from scholaros.events.subscriber import Subscriber
 
 
-class TestSubscriber(Subscriber):
+class DummySubscriber(Subscriber):
 
     def __init__(self):
         self.called = False
@@ -16,7 +16,7 @@ def test_publish():
 
     bus = EventBus()
 
-    sub = TestSubscriber()
+    sub = DummySubscriber()
 
     bus.subscribe("hello", sub)
 

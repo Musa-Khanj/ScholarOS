@@ -8,3 +8,12 @@ class ServiceAlreadyRegistered(ContainerError):
 
 class ServiceNotFound(ContainerError):
     """Raised when a service cannot be resolved."""
+
+
+class CircularDependencyError(ContainerError):
+    """Raised when a circular dependency is detected."""
+
+
+class InvalidServiceError(ContainerError):
+    """Raised when a service cannot be constructed."""
+

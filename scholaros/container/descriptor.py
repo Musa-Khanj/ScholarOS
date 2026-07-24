@@ -11,4 +11,4 @@ class ServiceDescriptor:
     interface: type
     implementation: type
     lifetime: ServiceLifetime
-    instance: Any | None = None
+    instance: Any = None

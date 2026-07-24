@@ -1,6 +1,7 @@
-from enum import Enum
+from enum import Enum, auto
 
 
-class ServiceLifetime(str, Enum):
-    SINGLETON = "singleton"
-    TRANSIENT = "transient"
+class ServiceLifetime(Enum):
+    SINGLETON = auto()
+    SCOPED = auto()
+    TRANSIENT = auto()
