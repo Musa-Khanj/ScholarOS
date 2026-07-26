@@ -11,7 +11,7 @@ from scholaros.container.exceptions import (
 
 class Builder:
     """
-    Responsible only for constructing object graphs.
+    Responsible for constructing object graphs.
     """
 
     def __init__(
@@ -50,9 +50,7 @@ class Builder:
 
             raise CircularDependencyError(cycle)
 
-        self._building.append(
-            implementation
-        )
+        self._building.append(implementation)
 
         try:
 
@@ -60,9 +58,7 @@ class Builder:
                 implementation
             )
 
-            return implementation(
-                **kwargs
-            )
+            return implementation(**kwargs)
 
         finally:
 
@@ -94,11 +90,8 @@ class Builder:
                 ] = signature
 
             parameters = [
-
                 parameter
-
                 for parameter in signature.parameters.values()
-
                 if (
                     parameter.name != "self"
                     and parameter.kind
@@ -117,21 +110,21 @@ class Builder:
 
         for parameter in parameters:
 
-            if (
-                parameter.annotation
-                is inspect.Parameter.empty
-            ):
+            annotation = parameter.annotation
 
+            if annotation is inspect.Parameter.empty:
                 raise InvalidServiceError(
-                    f"{implementation.__name__}."
-                    f"{parameter.name} "
+                    f"{implementation.__name__}.{parameter.name} "
                     "has no type annotation."
                 )
 
+            # Parameters with default values are treated as
+            # configuration values rather than container services.
+            if parameter.default is not inspect.Parameter.empty:
+                continue
+
             kwargs[
                 parameter.name
-            ] = self._resolver(
-                parameter.annotation
-            )
+            ] = self._resolver(annotation)
 
         return kwargs

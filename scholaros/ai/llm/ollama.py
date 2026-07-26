@@ -46,6 +46,11 @@ class OllamaLLM(LLM):
             model=self._model,
         )
 
+    @property
+    def model(self) -> str:
+        return self._model
+
+
     def _convert(
         self,
         messages: list[Message],
