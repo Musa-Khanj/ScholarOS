@@ -20,3 +20,5 @@ def test_ollama_generate():
 
     assert response.content
     assert isinstance(response.content, str)
+
+    
