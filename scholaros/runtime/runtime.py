@@ -17,6 +17,7 @@ Responsibilities
 • Own Execution
 • Own Workflow
 • Own Memory
+• Own PluginManager
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from __future__ import annotations
 from scholaros.execution import Execution
 from scholaros.memory import Memory
 from scholaros.planner import Planner
+from scholaros.plugins.manager import PluginManager
 from scholaros.workflow import Workflow
 
 
@@ -38,6 +40,7 @@ class Runtime:
         execution: Execution,
         workflow: Workflow,
         memory: Memory,
+        plugins: PluginManager,
     ) -> None:
         """
         Initialize the runtime.
@@ -47,6 +50,7 @@ class Runtime:
         self._execution = execution
         self._workflow = workflow
         self._memory = memory
+        self._plugins = plugins
 
     @property
     def planner(
@@ -90,6 +94,17 @@ class Runtime:
 
         return self._memory
 
+    @property
+    def plugins(
+        self,
+    ) -> PluginManager:
+        """
+        Return the configured plugin
+        manager.
+        """
+
+        return self._plugins
+
     def run(
         self,
     ) -> object:
@@ -98,7 +113,7 @@ class Runtime:
         """
 
         return self._planner.plan()
-    
+
     def __repr__(
         self,
     ) -> str:
@@ -112,6 +127,7 @@ class Runtime:
             f"planner={self.planner.__class__.__name__}, "
             f"execution={self.execution.__class__.__name__}, "
             f"workflow={self.workflow.__class__.__name__}, "
-            f"memory={self.memory.__class__.__name__}"
+            f"memory={self.memory.__class__.__name__}, "
+            f"plugins={self.plugins.__class__.__name__}"
             f")"
         )

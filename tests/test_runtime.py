@@ -5,6 +5,7 @@ from scholaros.memory import Memory
 from scholaros.planner import Planner
 from scholaros.runtime import Runtime
 from scholaros.workflow import Workflow
+from scholaros.plugins.manager import PluginManager
 
 
 def create_runtime() -> Runtime:
@@ -26,12 +27,14 @@ def create_runtime() -> Runtime:
     )
 
     memory = Memory()
+    plugins = PluginManager()
 
     return Runtime(
         planner=planner,
         execution=execution,
         workflow=workflow,
         memory=memory,
+        plugins=plugins,
     )
 
 
@@ -97,6 +100,7 @@ def test_repr():
             "planner=Planner, "
             "execution=Execution, "
             "workflow=Workflow, "
-            "memory=Memory)"
+            "memory=Memory, "
+            "plugins=PluginManager)"
         )
     )
