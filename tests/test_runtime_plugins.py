@@ -4,6 +4,8 @@ from scholaros.memory import Memory
 from scholaros.planner import Planner
 from scholaros.plugins.manager import PluginManager
 from scholaros.runtime import Runtime
+from scholaros.tools.manager import ToolManager
+from scholaros.tools.registry import ToolRegistry
 from scholaros.workflow import Workflow
 
 
@@ -27,11 +29,26 @@ class DummyAgent(BaseAgent):
 def create_runtime() -> Runtime:
 
     agent = DummyAgent()
-    workflow = Workflow(agent)
-    execution = Execution(workflow)
-    planner = Planner(execution)
+
+    workflow = Workflow(
+        agent,
+    )
+
+    execution = Execution(
+        workflow,
+    )
+
+    planner = Planner(
+        execution,
+    )
+
     memory = Memory()
+
     plugins = PluginManager()
+
+    tools = ToolManager(
+        ToolRegistry(),
+    )
 
     return Runtime(
         planner=planner,
@@ -39,6 +56,7 @@ def create_runtime() -> Runtime:
         workflow=workflow,
         memory=memory,
         plugins=plugins,
+        tools=tools,
     )
 
 
@@ -70,10 +88,30 @@ def test_runtime_keeps_existing_components():
 
     runtime = create_runtime()
 
-    assert isinstance(runtime.planner, Planner)
-    assert isinstance(runtime.execution, Execution)
-    assert isinstance(runtime.workflow, Workflow)
-    assert isinstance(runtime.memory, Memory)
+    assert isinstance(
+        runtime.planner,
+        Planner,
+    )
+
+    assert isinstance(
+        runtime.execution,
+        Execution,
+    )
+
+    assert isinstance(
+        runtime.workflow,
+        Workflow,
+    )
+
+    assert isinstance(
+        runtime.memory,
+        Memory,
+    )
+
+    assert isinstance(
+        runtime.tools,
+        ToolManager,
+    )
 
 
 def test_runtime_run():
@@ -89,10 +127,13 @@ def test_runtime_repr():
 
     assert (
         repr(runtime)
-        == "Runtime("
-        "planner=Planner, "
-        "execution=Execution, "
-        "workflow=Workflow, "
-        "memory=Memory, "
-        "plugins=PluginManager)"
+        == (
+            "Runtime("
+            "planner=Planner, "
+            "execution=Execution, "
+            "workflow=Workflow, "
+            "memory=Memory, "
+            "plugins=PluginManager, "
+            "tools=ToolManager)"
+        )
     )

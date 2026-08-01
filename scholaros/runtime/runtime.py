@@ -27,8 +27,7 @@ from scholaros.memory import Memory
 from scholaros.planner import Planner
 from scholaros.plugins.manager import PluginManager
 from scholaros.workflow import Workflow
-
-
+from scholaros.tools.manager import ToolManager
 class Runtime:
     """
     Represents the ScholarOS runtime.
@@ -41,6 +40,7 @@ class Runtime:
         workflow: Workflow,
         memory: Memory,
         plugins: PluginManager,
+        tools: ToolManager,
     ) -> None:
         """
         Initialize the runtime.
@@ -51,6 +51,7 @@ class Runtime:
         self._workflow = workflow
         self._memory = memory
         self._plugins = plugins
+        self._tools = tools
 
     @property
     def planner(
@@ -82,6 +83,16 @@ class Runtime:
         """
 
         return self._workflow
+
+    @property
+    def tools(
+        self,
+    ) -> ToolManager:
+        """
+        Return the configured tool manager.
+        """
+
+        return self._tools
 
     @property
     def memory(
@@ -128,6 +139,7 @@ class Runtime:
             f"execution={self.execution.__class__.__name__}, "
             f"workflow={self.workflow.__class__.__name__}, "
             f"memory={self.memory.__class__.__name__}, "
-            f"plugins={self.plugins.__class__.__name__}"
+            f"plugins={self.plugins.__class__.__name__}, "
+            f"tools={self.tools.__class__.__name__}"
             f")"
         )

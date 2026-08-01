@@ -46,70 +46,60 @@ def create_runtime() -> Runtime:
     )
 
 
-def test_planner_property():
+def test_runtime_contains_tool_manager():
 
     runtime = create_runtime()
 
     assert isinstance(
-        runtime.planner,
-        Planner,
+        runtime.tools,
+        ToolManager,
     )
 
 
-def test_execution_property():
+def test_runtime_returns_same_tool_manager():
 
     runtime = create_runtime()
 
-    assert isinstance(
-        runtime.execution,
-        Execution,
-    )
+    assert runtime.tools is runtime.tools
 
 
-def test_workflow_property():
+def test_runtime_has_empty_tools():
 
     runtime = create_runtime()
 
-    assert isinstance(
-        runtime.workflow,
-        Workflow,
-    )
+    assert runtime.tools.installed() == []
 
 
-def test_memory_property():
+def test_runtime_keeps_existing_components():
 
     runtime = create_runtime()
 
-    assert isinstance(
-        runtime.memory,
-        Memory,
-    )
+    assert runtime.planner is not None
+    assert runtime.execution is not None
+    assert runtime.workflow is not None
+    assert runtime.memory is not None
+    assert runtime.plugins is not None
+    assert runtime.tools is not None
 
 
-def test_run():
-
-    runtime = create_runtime()
-
-    result = runtime.run()
-
-    runtime.workflow.agent.execute.assert_called_once_with()
-
-    assert result == "Runtime Complete"
-
-
-def test_repr():
+def test_runtime_run():
 
     runtime = create_runtime()
 
-    assert (
-        repr(runtime)
-        == (
-            "Runtime("
-            "planner=Planner, "
-            "execution=Execution, "
-            "workflow=Workflow, "
-            "memory=Memory, "
-            "plugins=PluginManager, "
-            "tools=ToolManager)"
-        )
+    assert runtime.run() == "Runtime Complete"
+
+
+def test_runtime_repr():
+
+    runtime = create_runtime()
+
+    assert repr(runtime) == (
+        "Runtime("
+        "planner=Planner, "
+        "execution=Execution, "
+        "workflow=Workflow, "
+        "memory=Memory, "
+        "plugins=PluginManager, "
+        "tools=ToolManager"
+        ")"
     )
