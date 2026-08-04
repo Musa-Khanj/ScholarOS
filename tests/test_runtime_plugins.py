@@ -1,4 +1,6 @@
 from scholaros.agents import BaseAgent
+from scholaros.applications.manager import ApplicationManager
+from scholaros.applications.registry import ApplicationRegistry
 from scholaros.execution import Execution
 from scholaros.memory import Memory
 from scholaros.planner import Planner
@@ -10,19 +12,32 @@ from scholaros.workflow import Workflow
 
 
 class DummyAgent(BaseAgent):
+
     @property
-    def name(self) -> str:
+    def name(
+        self,
+    ) -> str:
+
         return "dummy"
 
     @property
-    def description(self) -> str:
+    def description(
+        self,
+    ) -> str:
+
         return "Dummy agent"
 
     @property
-    def version(self) -> str:
+    def version(
+        self,
+    ) -> str:
+
         return "1.0"
 
-    def execute(self) -> object:
+    def execute(
+        self,
+    ) -> object:
+
         return "ok"
 
 
@@ -50,6 +65,10 @@ def create_runtime() -> Runtime:
         ToolRegistry(),
     )
 
+    applications = ApplicationManager(
+        ApplicationRegistry(),
+    )
+
     return Runtime(
         planner=planner,
         execution=execution,
@@ -57,6 +76,7 @@ def create_runtime() -> Runtime:
         memory=memory,
         plugins=plugins,
         tools=tools,
+        applications=applications,
     )
 
 
@@ -113,6 +133,11 @@ def test_runtime_keeps_existing_components():
         ToolManager,
     )
 
+    assert isinstance(
+        runtime.applications,
+        ApplicationManager,
+    )
+
 
 def test_runtime_run():
 
@@ -134,6 +159,7 @@ def test_runtime_repr():
             "workflow=Workflow, "
             "memory=Memory, "
             "plugins=PluginManager, "
-            "tools=ToolManager)"
+            "tools=ToolManager, "
+            "applications=ApplicationManager)"
         )
     )

@@ -18,16 +18,21 @@ Responsibilities
 • Own Workflow
 • Own Memory
 • Own PluginManager
+• Own ToolManager
+• Own ApplicationManager
 """
 
 from __future__ import annotations
 
+from scholaros.applications.manager import ApplicationManager
 from scholaros.execution import Execution
 from scholaros.memory import Memory
 from scholaros.planner import Planner
 from scholaros.plugins.manager import PluginManager
-from scholaros.workflow import Workflow
 from scholaros.tools.manager import ToolManager
+from scholaros.workflow import Workflow
+
+
 class Runtime:
     """
     Represents the ScholarOS runtime.
@@ -41,6 +46,7 @@ class Runtime:
         memory: Memory,
         plugins: PluginManager,
         tools: ToolManager,
+        applications: ApplicationManager,
     ) -> None:
         """
         Initialize the runtime.
@@ -52,6 +58,7 @@ class Runtime:
         self._memory = memory
         self._plugins = plugins
         self._tools = tools
+        self._applications = applications
 
     @property
     def planner(
@@ -85,16 +92,6 @@ class Runtime:
         return self._workflow
 
     @property
-    def tools(
-        self,
-    ) -> ToolManager:
-        """
-        Return the configured tool manager.
-        """
-
-        return self._tools
-
-    @property
     def memory(
         self,
     ) -> Memory:
@@ -115,6 +112,28 @@ class Runtime:
         """
 
         return self._plugins
+
+    @property
+    def tools(
+        self,
+    ) -> ToolManager:
+        """
+        Return the configured tool
+        manager.
+        """
+
+        return self._tools
+
+    @property
+    def applications(
+        self,
+    ) -> ApplicationManager:
+        """
+        Return the configured application
+        manager.
+        """
+
+        return self._applications
 
     def run(
         self,
@@ -140,6 +159,7 @@ class Runtime:
             f"workflow={self.workflow.__class__.__name__}, "
             f"memory={self.memory.__class__.__name__}, "
             f"plugins={self.plugins.__class__.__name__}, "
-            f"tools={self.tools.__class__.__name__}"
+            f"tools={self.tools.__class__.__name__}, "
+            f"applications={self.applications.__class__.__name__}"
             f")"
         )

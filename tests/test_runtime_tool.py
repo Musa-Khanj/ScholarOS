@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+from scholaros.applications.manager import ApplicationManager
+from scholaros.applications.registry import ApplicationRegistry
 from scholaros.execution import Execution
 from scholaros.memory import Memory
 from scholaros.planner import Planner
@@ -36,6 +38,10 @@ def create_runtime() -> Runtime:
         ToolRegistry(),
     )
 
+    applications = ApplicationManager(
+        ApplicationRegistry(),
+    )
+
     return Runtime(
         planner=planner,
         execution=execution,
@@ -43,6 +49,7 @@ def create_runtime() -> Runtime:
         memory=memory,
         plugins=plugins,
         tools=tools,
+        applications=applications,
     )
 
 
@@ -74,12 +81,35 @@ def test_runtime_keeps_existing_components():
 
     runtime = create_runtime()
 
-    assert runtime.planner is not None
-    assert runtime.execution is not None
-    assert runtime.workflow is not None
-    assert runtime.memory is not None
-    assert runtime.plugins is not None
-    assert runtime.tools is not None
+    assert isinstance(
+        runtime.planner,
+        Planner,
+    )
+
+    assert isinstance(
+        runtime.execution,
+        Execution,
+    )
+
+    assert isinstance(
+        runtime.workflow,
+        Workflow,
+    )
+
+    assert isinstance(
+        runtime.memory,
+        Memory,
+    )
+
+    assert isinstance(
+        runtime.plugins,
+        PluginManager,
+    )
+
+    assert isinstance(
+        runtime.applications,
+        ApplicationManager,
+    )
 
 
 def test_runtime_run():
@@ -93,13 +123,16 @@ def test_runtime_repr():
 
     runtime = create_runtime()
 
-    assert repr(runtime) == (
-        "Runtime("
-        "planner=Planner, "
-        "execution=Execution, "
-        "workflow=Workflow, "
-        "memory=Memory, "
-        "plugins=PluginManager, "
-        "tools=ToolManager"
-        ")"
+    assert (
+        repr(runtime)
+        == (
+            "Runtime("
+            "planner=Planner, "
+            "execution=Execution, "
+            "workflow=Workflow, "
+            "memory=Memory, "
+            "plugins=PluginManager, "
+            "tools=ToolManager, "
+            "applications=ApplicationManager)"
+        )
     )

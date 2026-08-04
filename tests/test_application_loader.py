@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 from scholaros.applications.application import Application
+from scholaros.applications.loader import ApplicationLoader
 from scholaros.applications.manager import ApplicationManager
 from scholaros.applications.registry import ApplicationRegistry
 from scholaros.execution import Execution
@@ -58,34 +59,84 @@ def create_application() -> Application:
     )
 
 
-def test_application_runtime_property():
+def create_loader() -> ApplicationLoader:
 
-    application = create_application()
-
-    assert isinstance(
-        application.runtime,
-        Runtime,
+    return ApplicationLoader(
+        ApplicationManager(
+            ApplicationRegistry(),
+        ),
     )
 
 
-def test_application_run():
+def test_loader_load():
 
-    application = create_application()
+    loader = create_loader()
 
-    assert (
-        application.run()
-        == "Application Complete"
+    loader.load(
+        create_application(),
     )
 
+    assert loader.discover() == [
+        "Application",
+    ]
 
-def test_application_repr():
+
+def test_loader_unload():
+
+    loader = create_loader()
+
+    loader.load(
+        create_application(),
+    )
+
+    loader.unload(
+        "Application",
+    )
+
+    assert loader.discover() == []
+
+
+def test_loader_reload():
+
+    loader = create_loader()
 
     application = create_application()
 
+    loader.load(
+        application,
+    )
+
+    loader.reload(
+        application,
+    )
+
+    assert loader.discover() == [
+        "Application",
+    ]
+
+
+def test_loader_discover():
+
+    loader = create_loader()
+
+    loader.load(
+        create_application(),
+    )
+
+    assert loader.discover() == [
+        "Application",
+    ]
+
+
+def test_loader_repr():
+
+    loader = create_loader()
+
+    loader.load(
+        create_application(),
+    )
+
     assert (
-        repr(application)
-        == (
-            "Application("
-            "runtime=Runtime)"
-        )
+        repr(loader)
+        == "ApplicationLoader(applications=1)"
     )

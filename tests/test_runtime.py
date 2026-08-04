@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+from scholaros.applications.manager import ApplicationManager
+from scholaros.applications.registry import ApplicationRegistry
 from scholaros.execution import Execution
 from scholaros.memory import Memory
 from scholaros.planner import Planner
@@ -36,6 +38,10 @@ def create_runtime() -> Runtime:
         ToolRegistry(),
     )
 
+    applications = ApplicationManager(
+        ApplicationRegistry(),
+    )
+
     return Runtime(
         planner=planner,
         execution=execution,
@@ -43,6 +49,7 @@ def create_runtime() -> Runtime:
         memory=memory,
         plugins=plugins,
         tools=tools,
+        applications=applications,
     )
 
 
@@ -110,6 +117,7 @@ def test_repr():
             "workflow=Workflow, "
             "memory=Memory, "
             "plugins=PluginManager, "
-            "tools=ToolManager)"
+            "tools=ToolManager, "
+            "applications=ApplicationManager)"
         )
     )
