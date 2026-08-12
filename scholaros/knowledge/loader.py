@@ -55,23 +55,25 @@ class KnowledgeLoader:
         collection: KnowledgeCollection,
     ) -> None:
         """
-        Load a knowledge collection.
+        Load a knowledge
+        collection.
         """
 
-        self._manager.register(
+        self._manager.add(
             name,
             collection,
         )
 
-    def unload(
+    def remove(
         self,
         name: str,
     ) -> None:
         """
-        Unload a knowledge collection.
+        Remove a loaded knowledge
+        collection.
         """
 
-        self._manager.unregister(
+        self._manager.remove(
             name,
         )
 
@@ -81,10 +83,11 @@ class KnowledgeLoader:
         collection: KnowledgeCollection,
     ) -> None:
         """
-        Reload a knowledge collection.
+        Reload a knowledge
+        collection.
         """
 
-        self.unload(
+        self.remove(
             name,
         )
 
@@ -95,13 +98,28 @@ class KnowledgeLoader:
 
     def discover(
         self,
-    ) -> list[str]:
+    ) -> tuple[
+        str,
+        ...,
+    ]:
         """
         Return the discovered
         knowledge collections.
         """
 
-        return self._manager.installed()
+        return self._manager.names()
+
+    def __len__(
+        self,
+    ) -> int:
+        """
+        Return the number of loaded
+        knowledge collections.
+        """
+
+        return len(
+            self._manager,
+        )
 
     def __repr__(
         self,
@@ -114,6 +132,6 @@ class KnowledgeLoader:
 
         return (
             f"{self.__class__.__name__}("
-            f"collections={len(self.manager.registry)}"
+            f"collections={len(self)}"
             f")"
         )

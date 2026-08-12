@@ -1,24 +1,36 @@
-from scholaros.knowledge.collection import KnowledgeCollection
-from scholaros.knowledge.document import KnowledgeDocument
-from scholaros.knowledge.metadata import KnowledgeMetadata
-from scholaros.knowledge.registry import KnowledgeRegistry
+from scholaros.knowledge.collection import (
+    KnowledgeCollection,
+)
+from scholaros.knowledge.document import (
+    KnowledgeDocument,
+)
+from scholaros.knowledge.metadata import (
+    KnowledgeMetadata,
+)
+from scholaros.knowledge.registry import (
+    KnowledgeRegistry,
+)
 
 
 def create_collection() -> KnowledgeCollection:
+    """
+    Build a small knowledge
+    collection for testing.
+    """
 
     metadata = KnowledgeMetadata(
         author="Musa Khan",
         source="ScholarOS",
         language="English",
         version="1.0",
-        tags=[
+        tags=(
             "AI",
             "Knowledge",
-        ],
+        ),
     )
 
     document = KnowledgeDocument(
-        document_id="doc-001",
+        identifier="doc-001",
         title="ScholarOS Design",
         content="Knowledge architecture.",
         metadata=metadata,
@@ -44,9 +56,36 @@ def test_registry_add():
         collection,
     )
 
-    assert registry.get(
+    assert (
+        registry.get(
+            "Research",
+        )
+        is collection
+    )
+
+
+def test_registry_add_duplicate():
+
+    registry = KnowledgeRegistry()
+
+    registry.add(
         "Research",
-    ) is collection
+        create_collection(),
+    )
+
+    try:
+        registry.add(
+            "Research",
+            create_collection(),
+        )
+
+    except ValueError:
+        return
+
+    raise AssertionError(
+        "Duplicate registration "
+        "did not raise ValueError."
+    )
 
 
 def test_registry_get():
@@ -68,6 +107,24 @@ def test_registry_get():
     )
 
 
+def test_registry_get_unknown():
+
+    registry = KnowledgeRegistry()
+
+    try:
+        registry.get(
+            "Missing",
+        )
+
+    except KeyError:
+        return
+
+    raise AssertionError(
+        "Unknown lookup did not "
+        "raise KeyError."
+    )
+
+
 def test_registry_contains():
 
     registry = KnowledgeRegistry()
@@ -79,6 +136,21 @@ def test_registry_contains():
 
     assert registry.contains(
         "Research",
+    )
+
+
+def test_registry_dunder_contains():
+
+    registry = KnowledgeRegistry()
+
+    registry.add(
+        "Research",
+        create_collection(),
+    )
+
+    assert (
+        "Research"
+        in registry
     )
 
 
@@ -109,9 +181,12 @@ def test_registry_names():
         create_collection(),
     )
 
-    assert registry.names() == [
-        "Research",
-    ]
+    assert (
+        registry.names()
+        == (
+            "Research",
+        )
+    )
 
 
 def test_registry_values():
@@ -125,9 +200,12 @@ def test_registry_values():
         collection,
     )
 
-    assert registry.values() == [
-        collection,
-    ]
+    assert (
+        registry.values()
+        == (
+            collection,
+        )
+    )
 
 
 def test_registry_items():
@@ -141,12 +219,50 @@ def test_registry_items():
         collection,
     )
 
-    assert registry.items() == [
-        (
-            "Research",
-            collection,
-        ),
+    assert (
+        registry.items()
+        == (
+            (
+                "Research",
+                collection,
+            ),
+        )
+    )
+
+
+def test_registry_iteration():
+
+    registry = KnowledgeRegistry()
+
+    collection = create_collection()
+
+    registry.add(
+        "Research",
+        collection,
+    )
+
+    assert list(
+        registry,
+    ) == [
+        collection,
     ]
+
+
+def test_registry_len():
+
+    registry = KnowledgeRegistry()
+
+    registry.add(
+        "Research",
+        create_collection(),
+    )
+
+    assert (
+        len(
+            registry,
+        )
+        == 1
+    )
 
 
 def test_registry_clear():
@@ -160,9 +276,12 @@ def test_registry_clear():
 
     registry.clear()
 
-    assert len(
-        registry,
-    ) == 0
+    assert (
+        len(
+            registry,
+        )
+        == 0
+    )
 
 
 def test_registry_repr():
@@ -178,6 +297,8 @@ def test_registry_repr():
         repr(
             registry,
         )
-        == "KnowledgeRegistry("
-        "collections=1)"
+        == (
+            "KnowledgeRegistry("
+            "collections=1)"
+        )
     )

@@ -1,25 +1,39 @@
-from scholaros.knowledge.collection import KnowledgeCollection
-from scholaros.knowledge.document import KnowledgeDocument
-from scholaros.knowledge.manager import KnowledgeManager
-from scholaros.knowledge.metadata import KnowledgeMetadata
-from scholaros.knowledge.registry import KnowledgeRegistry
+from scholaros.knowledge.collection import (
+    KnowledgeCollection,
+)
+from scholaros.knowledge.document import (
+    KnowledgeDocument,
+)
+from scholaros.knowledge.manager import (
+    KnowledgeManager,
+)
+from scholaros.knowledge.metadata import (
+    KnowledgeMetadata,
+)
+from scholaros.knowledge.registry import (
+    KnowledgeRegistry,
+)
 
 
 def create_collection() -> KnowledgeCollection:
+    """
+    Build a small knowledge
+    collection for testing.
+    """
 
     metadata = KnowledgeMetadata(
         author="Musa Khan",
         source="ScholarOS",
         language="English",
         version="1.0",
-        tags=[
+        tags=(
             "AI",
             "Knowledge",
-        ],
+        ),
     )
 
     document = KnowledgeDocument(
-        document_id="doc-001",
+        identifier="doc-001",
         title="ScholarOS Design",
         content="Knowledge architecture.",
         metadata=metadata,
@@ -34,56 +48,80 @@ def create_collection() -> KnowledgeCollection:
     return collection
 
 
-def create_manager() -> KnowledgeManager:
+def test_manager_init_default():
 
-    registry = KnowledgeRegistry()
+    manager = KnowledgeManager()
 
-    return KnowledgeManager(
-        registry,
+    assert isinstance(
+        manager.registry,
+        KnowledgeRegistry,
     )
 
 
-def test_manager_register():
+def test_manager_init_custom():
 
-    manager = create_manager()
+    registry = KnowledgeRegistry()
+
+    manager = KnowledgeManager(
+        registry=registry,
+    )
+
+    assert (
+        manager.registry
+        is registry
+    )
+
+
+def test_manager_add():
+
+    manager = KnowledgeManager()
 
     collection = create_collection()
 
-    manager.register(
+    manager.add(
         "Research",
         collection,
     )
 
-    assert manager.get(
-        "Research",
-    ) is collection
+    assert (
+        manager.get(
+            "Research",
+        )
+        is collection
+    )
 
 
-def test_manager_unregister():
+def test_manager_add_duplicate():
 
-    manager = create_manager()
+    manager = KnowledgeManager()
 
-    manager.register(
+    manager.add(
         "Research",
         create_collection(),
     )
 
-    manager.unregister(
-        "Research",
-    )
+    try:
+        manager.add(
+            "Research",
+            create_collection(),
+        )
 
-    assert not manager.contains(
-        "Research",
+    except ValueError:
+        return
+
+    raise AssertionError(
+        "Duplicate registration "
+        "did not raise ValueError."
     )
 
 
 def test_manager_get():
 
-    manager = create_manager()
+    manager = KnowledgeManager()
 
     collection = create_collection()
 
-    manager.register(
+    manager.add(
         "Research",
         collection,
     )
@@ -96,11 +134,29 @@ def test_manager_get():
     )
 
 
+def test_manager_get_unknown():
+
+    manager = KnowledgeManager()
+
+    try:
+        manager.get(
+            "Missing",
+        )
+
+    except KeyError:
+        return
+
+    raise AssertionError(
+        "Unknown lookup did not "
+        "raise KeyError."
+    )
+
+
 def test_manager_contains():
 
-    manager = create_manager()
+    manager = KnowledgeManager()
 
-    manager.register(
+    manager.add(
         "Research",
         create_collection(),
     )
@@ -110,39 +166,82 @@ def test_manager_contains():
     )
 
 
-def test_manager_installed():
+def test_manager_remove():
 
-    manager = create_manager()
+    manager = KnowledgeManager()
 
-    manager.register(
+    manager.add(
         "Research",
         create_collection(),
     )
 
-    assert manager.installed() == [
+    manager.remove(
         "Research",
-    ]
+    )
+
+    assert not manager.contains(
+        "Research",
+    )
+
+
+def test_manager_names():
+
+    manager = KnowledgeManager()
+
+    manager.add(
+        "Research",
+        create_collection(),
+    )
+
+    assert (
+        manager.names()
+        == (
+            "Research",
+        )
+    )
 
 
 def test_manager_clear():
 
-    manager = create_manager()
+    manager = KnowledgeManager()
 
-    manager.register(
+    manager.add(
         "Research",
         create_collection(),
     )
 
     manager.clear()
 
-    assert manager.installed() == []
+    assert (
+        len(
+            manager,
+        )
+        == 0
+    )
+
+
+def test_manager_len():
+
+    manager = KnowledgeManager()
+
+    manager.add(
+        "Research",
+        create_collection(),
+    )
+
+    assert (
+        len(
+            manager,
+        )
+        == 1
+    )
 
 
 def test_manager_repr():
 
-    manager = create_manager()
+    manager = KnowledgeManager()
 
-    manager.register(
+    manager.add(
         "Research",
         create_collection(),
     )
@@ -151,6 +250,8 @@ def test_manager_repr():
         repr(
             manager,
         )
-        == "KnowledgeManager("
-        "collections=1)"
+        == (
+            "KnowledgeManager("
+            "collections=1)"
+        )
     )

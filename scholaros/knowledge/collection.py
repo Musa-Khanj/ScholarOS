@@ -14,7 +14,9 @@ documents.
 
 from __future__ import annotations
 
-from scholaros.knowledge.document import KnowledgeDocument
+from scholaros.knowledge.document import (
+    KnowledgeDocument,
+)
 
 
 class KnowledgeCollection:
@@ -46,12 +48,12 @@ class KnowledgeCollection:
         """
 
         self._documents[
-            document.id
+            document.identifier
         ] = document
 
     def remove(
         self,
-        document_id: str,
+        identifier: str,
     ) -> None:
         """
         Remove a document from the
@@ -59,13 +61,13 @@ class KnowledgeCollection:
         """
 
         self._documents.pop(
-            document_id,
+            identifier,
             None,
         )
 
     def get(
         self,
-        document_id: str,
+        identifier: str,
     ) -> KnowledgeDocument | None:
         """
         Return a document from the
@@ -73,12 +75,12 @@ class KnowledgeCollection:
         """
 
         return self._documents.get(
-            document_id,
+            identifier,
         )
 
     def contains(
         self,
-        document_id: str,
+        identifier: str,
     ) -> bool:
         """
         Return whether a document
@@ -86,46 +88,50 @@ class KnowledgeCollection:
         """
 
         return (
-            document_id
+            identifier
             in self._documents
         )
 
-    def ids(
+    def identifiers(
         self,
-    ) -> list[str]:
+    ) -> tuple[str, ...]:
         """
         Return all document
         identifiers.
         """
 
-        return list(
+        return tuple(
             self._documents.keys(),
         )
 
     def values(
         self,
-    ) -> list[KnowledgeDocument]:
+    ) -> tuple[
+        KnowledgeDocument,
+        ...,
+    ]:
         """
         Return all documents.
         """
 
-        return list(
+        return tuple(
             self._documents.values(),
         )
 
     def items(
         self,
-    ) -> list[
+    ) -> tuple[
         tuple[
             str,
             KnowledgeDocument,
-        ]
+        ],
+        ...,
     ]:
         """
         Return all document items.
         """
 
-        return list(
+        return tuple(
             self._documents.items(),
         )
 
@@ -138,6 +144,31 @@ class KnowledgeCollection:
         """
 
         self._documents.clear()
+
+    def __contains__(
+        self,
+        identifier: str,
+    ) -> bool:
+        """
+        Return whether the supplied
+        identifier exists.
+        """
+
+        return self.contains(
+            identifier,
+        )
+
+    def __iter__(
+        self,
+    ):
+        """
+        Iterate over the stored
+        documents.
+        """
+
+        return iter(
+            self._documents.values(),
+        )
 
     def __len__(
         self,

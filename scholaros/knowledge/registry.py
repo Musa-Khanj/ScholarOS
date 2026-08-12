@@ -45,8 +45,16 @@ class KnowledgeRegistry:
     ) -> None:
         """
         Register a knowledge
-        collection.
+        collection under the
+        supplied name.
         """
+
+        if name in self._collections:
+            raise ValueError(
+                f"Knowledge collection "
+                f"{name!r} is already "
+                f"registered."
+            )
 
         self._collections[
             name
@@ -58,7 +66,7 @@ class KnowledgeRegistry:
     ) -> None:
         """
         Remove a registered
-        collection.
+        collection by name.
         """
 
         self._collections.pop(
@@ -69,15 +77,23 @@ class KnowledgeRegistry:
     def get(
         self,
         name: str,
-    ) -> KnowledgeCollection | None:
+    ) -> KnowledgeCollection:
         """
         Return a registered
-        collection.
+        collection by name.
         """
 
-        return self._collections.get(
-            name,
-        )
+        try:
+            return self._collections[
+                name
+            ]
+
+        except KeyError as exc:
+            raise KeyError(
+                f"Unknown knowledge "
+                f"collection "
+                f"{name!r}."
+            ) from exc
 
     def contains(
         self,
@@ -85,49 +101,60 @@ class KnowledgeRegistry:
     ) -> bool:
         """
         Return whether a collection
-        is registered.
+        is registered under the
+        supplied name.
         """
 
-        return name in self._collections
+        return (
+            name
+            in self._collections
+        )
 
     def names(
         self,
-    ) -> list[str]:
+    ) -> tuple[
+        str,
+        ...,
+    ]:
         """
         Return registered collection
         names.
         """
 
-        return list(
+        return tuple(
             self._collections.keys(),
         )
 
     def values(
         self,
-    ) -> list[KnowledgeCollection]:
+    ) -> tuple[
+        KnowledgeCollection,
+        ...,
+    ]:
         """
         Return registered
         collections.
         """
 
-        return list(
+        return tuple(
             self._collections.values(),
         )
 
     def items(
         self,
-    ) -> list[
+    ) -> tuple[
         tuple[
             str,
             KnowledgeCollection,
-        ]
+        ],
+        ...,
     ]:
         """
         Return registered collection
-        items.
+        name and collection pairs.
         """
 
-        return list(
+        return tuple(
             self._collections.items(),
         )
 
@@ -140,6 +167,31 @@ class KnowledgeRegistry:
         """
 
         self._collections.clear()
+
+    def __contains__(
+        self,
+        name: str,
+    ) -> bool:
+        """
+        Return whether the supplied
+        collection is registered.
+        """
+
+        return self.contains(
+            name,
+        )
+
+    def __iter__(
+        self,
+    ):
+        """
+        Iterate over registered
+        collections.
+        """
+
+        return iter(
+            self._collections.values(),
+        )
 
     def __len__(
         self,

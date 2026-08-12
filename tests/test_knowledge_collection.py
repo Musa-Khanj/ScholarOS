@@ -1,6 +1,12 @@
-from scholaros.knowledge.collection import KnowledgeCollection
-from scholaros.knowledge.document import KnowledgeDocument
-from scholaros.knowledge.metadata import KnowledgeMetadata
+from scholaros.knowledge.collection import (
+    KnowledgeCollection,
+)
+from scholaros.knowledge.document import (
+    KnowledgeDocument,
+)
+from scholaros.knowledge.metadata import (
+    KnowledgeMetadata,
+)
 
 
 def create_document() -> KnowledgeDocument:
@@ -10,14 +16,14 @@ def create_document() -> KnowledgeDocument:
         source="ScholarOS",
         language="English",
         version="1.0",
-        tags=[
+        tags=(
             "AI",
             "Knowledge",
-        ],
+        ),
     )
 
     return KnowledgeDocument(
-        document_id="doc-001",
+        identifier="doc-001",
         title="ScholarOS Design",
         content="Knowledge architecture.",
         metadata=metadata,
@@ -34,9 +40,12 @@ def test_collection_add():
         document,
     )
 
-    assert collection.get(
-        "doc-001",
-    ) is document
+    assert (
+        collection.get(
+            "doc-001",
+        )
+        is document
+    )
 
 
 def test_collection_get():
@@ -70,6 +79,20 @@ def test_collection_contains():
     )
 
 
+def test_collection_dunder_contains():
+
+    collection = KnowledgeCollection()
+
+    collection.add(
+        create_document(),
+    )
+
+    assert (
+        "doc-001"
+        in collection
+    )
+
+
 def test_collection_remove():
 
     collection = KnowledgeCollection()
@@ -87,7 +110,7 @@ def test_collection_remove():
     )
 
 
-def test_collection_ids():
+def test_collection_identifiers():
 
     collection = KnowledgeCollection()
 
@@ -95,9 +118,12 @@ def test_collection_ids():
         create_document(),
     )
 
-    assert collection.ids() == [
-        "doc-001",
-    ]
+    assert (
+        collection.identifiers()
+        == (
+            "doc-001",
+        )
+    )
 
 
 def test_collection_values():
@@ -110,9 +136,12 @@ def test_collection_values():
         document,
     )
 
-    assert collection.values() == [
-        document,
-    ]
+    assert (
+        collection.values()
+        == (
+            document,
+        )
+    )
 
 
 def test_collection_items():
@@ -125,11 +154,31 @@ def test_collection_items():
         document,
     )
 
-    assert collection.items() == [
-        (
-            "doc-001",
-            document,
-        ),
+    assert (
+        collection.items()
+        == (
+            (
+                "doc-001",
+                document,
+            ),
+        )
+    )
+
+
+def test_collection_iteration():
+
+    collection = KnowledgeCollection()
+
+    document = create_document()
+
+    collection.add(
+        document,
+    )
+
+    assert list(
+        collection,
+    ) == [
+        document,
     ]
 
 
@@ -143,9 +192,12 @@ def test_collection_clear():
 
     collection.clear()
 
-    assert len(
-        collection,
-    ) == 0
+    assert (
+        len(
+            collection,
+        )
+        == 0
+    )
 
 
 def test_collection_repr():

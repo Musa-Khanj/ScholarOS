@@ -1,4 +1,6 @@
-from scholaros.knowledge.metadata import KnowledgeMetadata
+from scholaros.knowledge.metadata import (
+    KnowledgeMetadata,
+)
 
 
 def create_metadata() -> KnowledgeMetadata:
@@ -8,11 +10,11 @@ def create_metadata() -> KnowledgeMetadata:
         source="ScholarOS",
         language="English",
         version="1.0",
-        tags=[
+        tags=(
             "AI",
             "Knowledge",
             "Research",
-        ],
+        ),
     )
 
 
@@ -20,39 +22,69 @@ def test_author_property():
 
     metadata = create_metadata()
 
-    assert metadata.author == "Musa Khan"
+    assert (
+        metadata.author
+        == "Musa Khan"
+    )
 
 
 def test_source_property():
 
     metadata = create_metadata()
 
-    assert metadata.source == "ScholarOS"
+    assert (
+        metadata.source
+        == "ScholarOS"
+    )
 
 
 def test_language_property():
 
     metadata = create_metadata()
 
-    assert metadata.language == "English"
+    assert (
+        metadata.language
+        == "English"
+    )
 
 
 def test_version_property():
 
     metadata = create_metadata()
 
-    assert metadata.version == "1.0"
+    assert (
+        metadata.version
+        == "1.0"
+    )
 
 
 def test_tags_property():
 
     metadata = create_metadata()
 
-    assert metadata.tags == [
-        "AI",
-        "Knowledge",
-        "Research",
-    ]
+    assert (
+        metadata.tags
+        == (
+            "AI",
+            "Knowledge",
+            "Research",
+        )
+    )
+
+
+def test_default_constructor():
+
+    metadata = KnowledgeMetadata()
+
+    assert metadata.author == ""
+
+    assert metadata.source == ""
+
+    assert metadata.language == ""
+
+    assert metadata.version == ""
+
+    assert metadata.tags == ()
 
 
 def test_repr():
@@ -60,14 +92,16 @@ def test_repr():
     metadata = create_metadata()
 
     assert (
-        repr(metadata)
+        repr(
+            metadata,
+        )
         == (
             "KnowledgeMetadata("
             "author='Musa Khan', "
             "source='ScholarOS', "
             "language='English', "
             "version='1.0', "
-            "tags=['AI', 'Knowledge', 'Research']"
+            "tags=('AI', 'Knowledge', 'Research')"
             ")"
         )
     )

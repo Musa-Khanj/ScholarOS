@@ -1,26 +1,42 @@
-from scholaros.knowledge.collection import KnowledgeCollection
-from scholaros.knowledge.document import KnowledgeDocument
-from scholaros.knowledge.loader import KnowledgeLoader
-from scholaros.knowledge.manager import KnowledgeManager
-from scholaros.knowledge.metadata import KnowledgeMetadata
-from scholaros.knowledge.registry import KnowledgeRegistry
+from scholaros.knowledge.collection import (
+    KnowledgeCollection,
+)
+from scholaros.knowledge.document import (
+    KnowledgeDocument,
+)
+from scholaros.knowledge.loader import (
+    KnowledgeLoader,
+)
+from scholaros.knowledge.manager import (
+    KnowledgeManager,
+)
+from scholaros.knowledge.metadata import (
+    KnowledgeMetadata,
+)
+from scholaros.knowledge.registry import (
+    KnowledgeRegistry,
+)
 
 
 def create_collection() -> KnowledgeCollection:
+    """
+    Build a small knowledge
+    collection for testing.
+    """
 
     metadata = KnowledgeMetadata(
         author="Musa Khan",
         source="ScholarOS",
         language="English",
         version="1.0",
-        tags=[
+        tags=(
             "AI",
             "Knowledge",
-        ],
+        ),
     )
 
     document = KnowledgeDocument(
-        document_id="doc-001",
+        identifier="doc-001",
         title="ScholarOS Design",
         content="Knowledge architecture.",
         metadata=metadata,
@@ -36,15 +52,19 @@ def create_collection() -> KnowledgeCollection:
 
 
 def create_loader() -> KnowledgeLoader:
+    """
+    Build a knowledge loader
+    for testing.
+    """
 
     registry = KnowledgeRegistry()
 
     manager = KnowledgeManager(
-        registry,
+        registry=registry,
     )
 
     return KnowledgeLoader(
-        manager,
+        manager=manager,
     )
 
 
@@ -59,12 +79,15 @@ def test_loader_load():
         collection,
     )
 
-    assert loader.manager.get(
-        "Research",
-    ) is collection
+    assert (
+        loader.manager.get(
+            "Research",
+        )
+        is collection
+    )
 
 
-def test_loader_unload():
+def test_loader_remove():
 
     loader = create_loader()
 
@@ -73,7 +96,7 @@ def test_loader_unload():
         create_collection(),
     )
 
-    loader.unload(
+    loader.remove(
         "Research",
     )
 
@@ -98,9 +121,12 @@ def test_loader_reload():
         collection,
     )
 
-    assert loader.manager.get(
-        "Research",
-    ) is collection
+    assert (
+        loader.manager.get(
+            "Research",
+        )
+        is collection
+    )
 
 
 def test_loader_discover():
@@ -112,9 +138,29 @@ def test_loader_discover():
         create_collection(),
     )
 
-    assert loader.discover() == [
+    assert (
+        loader.discover()
+        == (
+            "Research",
+        )
+    )
+
+
+def test_loader_len():
+
+    loader = create_loader()
+
+    loader.load(
         "Research",
-    ]
+        create_collection(),
+    )
+
+    assert (
+        len(
+            loader,
+        )
+        == 1
+    )
 
 
 def test_loader_repr():
@@ -130,6 +176,8 @@ def test_loader_repr():
         repr(
             loader,
         )
-        == "KnowledgeLoader("
-        "collections=1)"
+        == (
+            "KnowledgeLoader("
+            "collections=1)"
+        )
     )

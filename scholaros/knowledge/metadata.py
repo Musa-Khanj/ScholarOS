@@ -23,11 +23,14 @@ class KnowledgeMetadata:
 
     def __init__(
         self,
-        author: str,
-        source: str,
-        language: str,
-        version: str,
-        tags: list[str],
+        author: str = "",
+        source: str = "",
+        language: str = "",
+        version: str = "",
+        tags: tuple[
+            str,
+            ...,
+        ] | None = None,
     ) -> None:
         """
         Initialize the knowledge
@@ -38,7 +41,9 @@ class KnowledgeMetadata:
         self._source = source
         self._language = language
         self._version = version
-        self._tags = tags
+        self._tags = tuple(
+            tags or ()
+        )
 
     @property
     def author(
@@ -83,7 +88,10 @@ class KnowledgeMetadata:
     @property
     def tags(
         self,
-    ) -> list[str]:
+    ) -> tuple[
+        str,
+        ...,
+    ]:
         """
         Return the document tags.
         """
@@ -95,7 +103,8 @@ class KnowledgeMetadata:
     ) -> str:
         """
         Return a developer-friendly
-        representation of the metadata.
+        representation of the
+        metadata.
         """
 
         return (

@@ -1,30 +1,40 @@
-from scholaros.knowledge.document import KnowledgeDocument
-from scholaros.knowledge.metadata import KnowledgeMetadata
+from scholaros.knowledge.document import (
+    KnowledgeDocument,
+)
+from scholaros.knowledge.metadata import (
+    KnowledgeMetadata,
+)
 
 
 def create_document() -> KnowledgeDocument:
 
-    metadata: KnowledgeMetadata = KnowledgeMetadata(
+    metadata = KnowledgeMetadata(
         author="John Doe",
         source="Internal",
         language="en",
         version="1.0",
-        tags=["design", "architecture"],
+        tags=(
+            "design",
+            "architecture",
+        ),
     )
 
     return KnowledgeDocument(
-        document_id="doc-001",
+        identifier="doc-001",
         title="ScholarOS Design",
         content="Knowledge architecture.",
         metadata=metadata,
     )
 
 
-def test_id_property():
+def test_identifier_property():
 
     document = create_document()
 
-    assert document.id == "doc-001"
+    assert (
+        document.identifier
+        == "doc-001"
+    )
 
 
 def test_title_property():
@@ -62,10 +72,12 @@ def test_repr():
     document = create_document()
 
     assert (
-        repr(document)
+        repr(
+            document,
+        )
         == (
             "KnowledgeDocument("
-            "id='doc-001', "
+            "identifier='doc-001', "
             "title='ScholarOS Design'"
             ")"
         )

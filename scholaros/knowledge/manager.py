@@ -30,14 +30,18 @@ class KnowledgeManager:
 
     def __init__(
         self,
-        registry: KnowledgeRegistry,
+        registry: KnowledgeRegistry | None = None,
     ) -> None:
         """
         Initialize the knowledge
         manager.
         """
 
-        self._registry = registry
+        self._registry = (
+            registry
+            if registry is not None
+            else KnowledgeRegistry()
+        )
 
     @property
     def registry(
@@ -49,13 +53,13 @@ class KnowledgeManager:
 
         return self._registry
 
-    def register(
+    def add(
         self,
         name: str,
         collection: KnowledgeCollection,
     ) -> None:
         """
-        Register a knowledge
+        Add a knowledge
         collection.
         """
 
@@ -64,13 +68,13 @@ class KnowledgeManager:
             collection,
         )
 
-    def unregister(
+    def remove(
         self,
         name: str,
     ) -> None:
         """
-        Unregister a knowledge
-        collection.
+        Remove a registered
+        knowledge collection.
         """
 
         self._registry.remove(
@@ -80,7 +84,7 @@ class KnowledgeManager:
     def get(
         self,
         name: str,
-    ) -> KnowledgeCollection | None:
+    ) -> KnowledgeCollection:
         """
         Return a registered
         knowledge collection.
@@ -103,9 +107,12 @@ class KnowledgeManager:
             name,
         )
 
-    def installed(
+    def names(
         self,
-    ) -> list[str]:
+    ) -> tuple[
+        str,
+        ...,
+    ]:
         """
         Return registered knowledge
         collection names.
@@ -123,6 +130,18 @@ class KnowledgeManager:
 
         self._registry.clear()
 
+    def __len__(
+        self,
+    ) -> int:
+        """
+        Return the number of
+        registered collections.
+        """
+
+        return len(
+            self._registry,
+        )
+
     def __repr__(
         self,
     ) -> str:
@@ -134,6 +153,6 @@ class KnowledgeManager:
 
         return (
             f"{self.__class__.__name__}("
-            f"collections={len(self._registry)}"
+            f"collections={len(self)}"
             f")"
         )

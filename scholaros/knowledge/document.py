@@ -14,46 +14,56 @@ within ScholarOS.
 
 from __future__ import annotations
 
-from scholaros.knowledge.metadata import KnowledgeMetadata
+from scholaros.knowledge.metadata import (
+    KnowledgeMetadata,
+)
 
 
 class KnowledgeDocument:
     """
-    Represents a single knowledge document.
+    Represents a single knowledge
+    document.
     """
 
     def __init__(
-    self,
-    document_id: str,
-    title: str,
-    content: str,
-    metadata: KnowledgeMetadata,
-) -> None:
+        self,
+        identifier: str,
+        title: str,
+        content: str,
+        metadata: KnowledgeMetadata | None = None,
+    ) -> None:
         """
-        Initialize the knowledge document.
+        Initialize the knowledge
+        document.
         """
 
-        self._id = document_id
+        self._identifier = identifier
         self._title = title
         self._content = content
-        self._metadata = metadata
+        self._metadata = (
+            metadata
+            if metadata is not None
+            else KnowledgeMetadata()
+        )
 
     @property
-    def id(
+    def identifier(
         self,
     ) -> str:
         """
-        Return the document identifier.
+        Return the document
+        identifier.
         """
 
-        return self._id
+        return self._identifier
 
     @property
     def title(
         self,
     ) -> str:
         """
-        Return the document title.
+        Return the document
+        title.
         """
 
         return self._title
@@ -63,7 +73,8 @@ class KnowledgeDocument:
         self,
     ) -> str:
         """
-        Return the document content.
+        Return the document
+        content.
         """
 
         return self._content
@@ -73,7 +84,8 @@ class KnowledgeDocument:
         self,
     ) -> KnowledgeMetadata:
         """
-        Return the document metadata.
+        Return the document
+        metadata.
         """
 
         return self._metadata
@@ -83,12 +95,15 @@ class KnowledgeDocument:
     ) -> str:
         """
         Return a developer-friendly
-        representation of the document.
+        representation of the
+        document.
         """
 
         return (
             f"{self.__class__.__name__}("
-            f"id={self.id!r}, "
-            f"title={self.title!r}"
+            f"identifier="
+            f"{self.identifier!r}, "
+            f"title="
+            f"{self.title!r}"
             f")"
         )
