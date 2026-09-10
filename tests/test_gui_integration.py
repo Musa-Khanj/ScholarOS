@@ -27,8 +27,9 @@ def create_integration() -> GUIIntegration:
     global _root
 
     if _root is None:
-        if tk._default_root is not None:
-            _root = tk._default_root
+        default_root = getattr(tk, "_default_root", None)
+        if default_root is not None:
+            _root = default_root
         else:
             _root = tk.Tk()
             _root.withdraw()

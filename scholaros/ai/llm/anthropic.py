@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from scholaros.ai.llm.base import LLM
 from scholaros.ai.llm.message import (
     Message,
@@ -36,11 +38,19 @@ class AnthropicLLM(LLM):
 
     def generate(
         self,
-        messages: list[Message],
+        messages: list[Message] | str,
     ) -> LLMResponse:
 
+        if isinstance(messages, str):
+            messages = [
+                Message(
+                    role=MessageRole.USER,
+                    content=messages,
+                )
+            ]
+
         system = None
-        converted = []
+        converted: list[dict[str, Any]] = []
 
         for message in messages:
 
@@ -60,17 +70,21 @@ class AnthropicLLM(LLM):
                     }
                 )
 
-        response = self._client.messages.create(
-            model=self._model,
-            system=system,
-            messages=converted,
-            max_tokens=4096,
-        )
+        create_kwargs: dict[str, Any] = {
+            "model": self._model,
+            "messages": converted,
+            "system": system,
+            "max_tokens": 4096,
+        }
+
+        response = self._client.messages.create(**create_kwargs)
 
         usage = response.usage
+        first_block = response.content[0]
+        content_text = getattr(first_block, "text", str(first_block))
 
         return LLMResponse(
-            content=response.content[0].text,
+            content=content_text,
             model=self._model,
             prompt_tokens=(
                 usage.input_tokens

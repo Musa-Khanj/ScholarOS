@@ -58,7 +58,7 @@ class ScholarOSFrontend:
             self._root = root
 
         else:
-            existing_root = tk._default_root
+            existing_root = getattr(tk, "_default_root", None)
 
             if existing_root is not None:
                 try:
@@ -560,7 +560,7 @@ class ScholarOSFrontend:
                 text=self.presentation.status(),
             )
 
-        except Exception as exc:
+        except (RuntimeError, ValueError, TypeError) as exc:
             self._status_var.set(
                 "ScholarOS status: ERROR",
             )
@@ -627,7 +627,7 @@ class ScholarOSFrontend:
                 text="RAG query completed.",
             )
 
-        except Exception as exc:
+        except (RuntimeError, ValueError, TypeError) as exc:
             self._set_text(
                 self._rag_output,
                 f"RAG query failed:\n{exc}",
@@ -691,7 +691,7 @@ class ScholarOSFrontend:
                 text="Research prompt built.",
             )
 
-        except Exception as exc:
+        except (RuntimeError, ValueError, TypeError) as exc:
             self._set_text(
                 self._research_output,
                 f"Research build failed:\n{exc}",
@@ -757,7 +757,7 @@ class ScholarOSFrontend:
                 text="Research execution completed.",
             )
 
-        except Exception as exc:
+        except (RuntimeError, ValueError, TypeError) as exc:
             self._set_text(
                 self._research_output,
                 f"Research execution failed:\n{exc}",

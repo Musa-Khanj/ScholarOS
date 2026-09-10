@@ -29,7 +29,6 @@ Future responsibilities include:
 
 from __future__ import annotations
 
-from typing import Any
 
 from scholaros.gui.window import GUIWindow
 
@@ -131,37 +130,37 @@ class ApplicationController:
         self,
     ) -> None:
         """
-        Placeholder for research page.
+        Display the research workspace.
         """
-
-        pass
+        if hasattr(self.window, "show_research") and callable(self.window.show_research):
+            self.window.show_research()
 
     def show_library(
         self,
     ) -> None:
         """
-        Placeholder for library page.
+        Display the library workspace.
         """
-
-        pass
+        if hasattr(self.window, "show_library") and callable(self.window.show_library):
+            self.window.show_library()
 
     def show_plugins(
         self,
     ) -> None:
         """
-        Placeholder for plugins page.
+        Display the plugins workspace.
         """
-
-        pass
+        if hasattr(self.window, "show_plugins") and callable(self.window.show_plugins):
+            self.window.show_plugins()
 
     def show_settings(
         self,
     ) -> None:
         """
-        Placeholder for settings page.
+        Display the settings workspace.
         """
-
-        pass
+        if hasattr(self.window, "show_settings") and callable(self.window.show_settings):
+            self.window.show_settings()
 
     # ---------------------------------------------------------
     # Events

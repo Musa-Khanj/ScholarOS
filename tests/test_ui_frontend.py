@@ -14,13 +14,20 @@ from scholaros.ui.presentation import (
 @pytest.fixture
 def root():
 
+    default_root = getattr(tk, "_default_root", None)
+    if default_root is not None:
+        try:
+            default_root.winfo_exists()
+            yield default_root
+            return
+        except tk.TclError:
+            pass
+
     root = tk.Tk()
 
     root.withdraw()
 
     yield root
-
-    root.destroy()
 
 
 def create_presentation():

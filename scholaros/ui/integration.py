@@ -21,6 +21,9 @@ knowledge, or kernel behavior.
 
 from __future__ import annotations
 
+from typing import Any
+import tkinter as tk
+
 from scholaros.ui.application import (
     UIApplication,
 )
@@ -46,7 +49,7 @@ class UIIntegration:
     def __init__(
         self,
         application: UIApplication,
-        root: object | None = None,
+        root: tk.Tk | None = None,
     ) -> None:
         """
         Initialize the UI integration layer.
@@ -139,14 +142,9 @@ class UIIntegration:
 
     def run(
         self,
-    ) -> object:
+    ) -> Any:
         """
         Run the integrated frontend.
-
-        Returns
-        -------
-        object
-            The frontend execution result.
         """
 
         return self.frontend.run()

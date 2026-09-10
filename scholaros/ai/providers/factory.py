@@ -45,7 +45,7 @@ class ProviderFactory:
         name: str,
         *args: Any,
         **kwargs: Any,
-    ) -> LLM:
+    ) -> Any:
         """
         Create a provider instance.
         """

@@ -19,10 +19,6 @@ from scholaros.gui.launcher import (
     GUILauncher,
     launch_gui,
 )
-from scholaros.gui.main import (
-    create_application,
-    main,
-)
 
 __all__ = [
     "GUIApplication",

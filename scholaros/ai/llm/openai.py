@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from openai import OpenAI
+from typing import Any
 
 from scholaros.ai.llm.base import LLM
 from scholaros.ai.llm.message import (
@@ -19,6 +17,15 @@ class OpenAILLM(LLM):
         base_url: str | None = None,
     ) -> None:
 
+        try:
+            from openai import OpenAI
+        except ImportError as exc:
+            raise ImportError(
+                "OpenAI support requires the 'openai' package.\n"
+                "Install it using:\n"
+                "pip install openai"
+            ) from exc
+
         self._model = model
 
         self._client = OpenAI(
@@ -28,12 +35,22 @@ class OpenAILLM(LLM):
 
     def generate(
         self,
-        messages: list[Message],
+        messages: list[Message] | str,
     ) -> LLMResponse:
+
+        if isinstance(messages, str):
+            messages = [
+                Message(
+                    role=MessageRole.USER,
+                    content=messages,
+                )
+            ]
+
+        payload_messages: list[Any] = self._convert(messages)
 
         response = self._client.chat.completions.create(
             model=self._model,
-            messages=self._convert(messages),
+            messages=payload_messages,
         )
 
         usage = response.usage

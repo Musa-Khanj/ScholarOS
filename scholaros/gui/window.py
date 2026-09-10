@@ -50,9 +50,9 @@ class GUIWindow:
 
             self._root = root
 
-        elif tk._default_root is not None:
+        elif getattr(tk, "_default_root", None) is not None:
 
-            self._root = tk._default_root
+            self._root = getattr(tk, "_default_root")
 
         else:
 
@@ -66,15 +66,15 @@ class GUIWindow:
 
         self._built = False
 
-        self._header = None
-        self._body = None
-        self._sidebar = None
-        self._workspace = None
-        self._toolbar = None
-        self._statusbar = None
+        self._header: ttk.Frame | None = None
+        self._body: ttk.Frame | None = None
+        self._sidebar: ttk.Frame | None = None
+        self._workspace: ttk.Frame | None = None
+        self._toolbar: ttk.Frame | None = None
+        self._statusbar: ttk.Label | None = None
 
-        self._welcome_view = None
-        self._chat_panel = None
+        self._welcome_view: WelcomeView | None = None
+        self._chat_panel: ChatPanel | None = None
 
     # -----------------------------------------------------
     # Properties

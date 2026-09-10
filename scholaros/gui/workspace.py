@@ -20,6 +20,7 @@ research, AI, plugins, or business logic.
 
 from __future__ import annotations
 
+from typing import Any
 from tkinter import ttk
 
 from scholaros.gui.chat_view import GUIChatView
@@ -74,9 +75,29 @@ class GUIWorkspace:
 
         self._current_view: object | None = None
 
-        self._views: dict[str, object] = {}
+        self._active: Any = None
 
-        self._active = None
+    @property
+    def frame(
+        self,
+    ) -> ttk.Frame:
+        """
+        Return the workspace frame.
+        """
+
+        return self._container
+
+    def add_view(
+        self,
+        view: object,
+        name: str | None = None,
+    ) -> None:
+        """
+        Add a view to the workspace.
+        """
+
+        view_name = name or getattr(view, "name", view.__class__.__name__)
+        self.register(str(view_name), view)
 
     def create_default_views(
         self,
@@ -88,13 +109,15 @@ class GUIWorkspace:
         self.add_view(
             GUIHomeView(
                 self.frame,
-            )
+            ),
+            "home",
         )
 
         self.add_view(
             GUIChatView(
                 self.frame,
-            )
+            ),
+            "chat",
         )
 
         self.show(
@@ -200,15 +223,20 @@ class GUIWorkspace:
             self._create_views()
 
         if self._active is not None:
-
-            self._active.frame.pack_forget()
+            active_frame = getattr(self._active, "frame", self._active)
+            if hasattr(active_frame, "pack_forget"):
+                active_frame.pack_forget()
 
         self._active = self._views[name]
+        self._current_name = name
+        self._current_view = self._active
 
-        self._active.frame.pack(
-            fill="both",
-            expand=True,
-        )
+        view_frame = getattr(self._active, "frame", self._active)
+        if hasattr(view_frame, "pack"):
+            view_frame.pack(
+                fill="both",
+                expand=True,
+            )
 
 
     @property
@@ -230,12 +258,12 @@ class GUIWorkspace:
         """
 
         self._views = {
-            "Home": HomeView(self.frame),
-            "Chat": ChatView(self.frame),
-            "Research": ResearchView(self.frame),
-            "Library": LibraryView(self.frame),
-            "Plugins": PluginsView(self.frame),
-            "Settings": SettingsView(self.frame),
+            "Home": HomeView(self.container),
+            "Chat": ChatView(self.container),
+            "Research": ResearchView(self.container),
+            "Library": LibraryView(self.container),
+            "Plugins": PluginsView(self.container),
+            "Settings": SettingsView(self.container),
         }
 
     # ---------------------------------------------------------

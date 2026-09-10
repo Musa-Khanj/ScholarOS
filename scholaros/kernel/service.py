@@ -36,11 +36,19 @@ class Service(Component, ABC):
 
     def __init__(
         self,
-        metadata: ComponentMetadata,
+        metadata: ComponentMetadata | None = None,
     ) -> None:
         """
         Initialize the service.
         """
+
+        if metadata is None:
+            metadata = ComponentMetadata(
+                name=self.__class__.__name__,
+                version="1.0",
+                description=f"{self.__class__.__name__} service",
+                author="ScholarOS",
+            )
 
         super().__init__(metadata)
 

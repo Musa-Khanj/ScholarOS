@@ -1,16 +1,12 @@
 """
 ScholarOS
-GUI Views
+GUI Workspace Views
 
 Version : 1.0
 Status  : In Development
 Python  : 3.14+
 
 Provides reusable workspace views.
-
-Views are purely visual.
-
-No application logic belongs here.
 """
 
 from __future__ import annotations
@@ -29,35 +25,50 @@ class GUIView:
     def __init__(
         self,
         parent: tk.Widget,
-        title: str,
-        description: str,
+        title: str = "",
+        description: str = "",
+        name: str = "",
     ) -> None:
+
+        self._parent = parent
+        self._name = name or title.lower()
+        self._built = False
 
         self._frame = ttk.Frame(
             parent,
             padding=30,
         )
 
-        ttk.Label(
-            self._frame,
-            text=title,
-            font=(
-                "TkDefaultFont",
-                22,
-                "bold",
-            ),
-        ).pack(
-            anchor="w",
-            pady=(0, 10),
-        )
+        if title:
+            ttk.Label(
+                self._frame,
+                text=title,
+                font=(
+                    "TkDefaultFont",
+                    22,
+                    "bold",
+                ),
+            ).pack(
+                anchor="w",
+                pady=(0, 10),
+            )
 
-        ttk.Label(
-            self._frame,
-            text=description,
-            justify="left",
-        ).pack(
-            anchor="w",
-        )
+        if description:
+            ttk.Label(
+                self._frame,
+                text=description,
+                justify="left",
+            ).pack(
+                anchor="w",
+            )
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def built(self) -> bool:
+        return self._built
 
     @property
     def frame(
@@ -84,20 +95,20 @@ class ChatView:
 
     def __init__(
         self,
-        parent,
-    ):
+        parent: tk.Widget,
+    ) -> None:
 
         self._chat = GUIChat(parent)
 
         self._chat.build()
 
     @property
-    def frame(self):
+    def frame(self) -> ttk.Frame:
 
         return self._chat.frame
 
     @property
-    def chat(self):
+    def chat(self) -> GUIChat:
 
         return self._chat
 

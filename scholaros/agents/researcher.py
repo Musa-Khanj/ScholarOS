@@ -15,7 +15,7 @@ responsible for executing research tasks.
 from __future__ import annotations
 from scholaros.research.pipeline import ResearchPipeline
 
-from scholaros.agents import BaseAgent
+from scholaros.agents.base import BaseAgent
 
 
 class ResearchAgent(BaseAgent):
@@ -81,12 +81,22 @@ class ResearchAgent(BaseAgent):
     
     def execute(
         self,
+        task: str | None = None,
+        **kwargs: str,
     ) -> object:
         """
         Execute the research task.
         """
 
-        raise NotImplementedError
+        if task is None:
+            raise NotImplementedError(
+                "ResearchAgent.execute requires a task or template name."
+            )
+
+        return self._pipeline.execute(
+            task,
+            **kwargs,
+        )
 
     def __repr__(
         self,

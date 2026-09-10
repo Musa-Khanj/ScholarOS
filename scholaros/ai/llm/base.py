@@ -11,7 +11,7 @@ class LLM(ABC):
     @abstractmethod
     def generate(
         self,
-        messages: list[Message],
+        messages: list[Message] | str,
     ) -> LLMResponse:
         raise NotImplementedError
 

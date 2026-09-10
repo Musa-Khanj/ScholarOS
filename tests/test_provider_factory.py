@@ -24,7 +24,7 @@ class DummyLLM(LLM):
 
     def generate(
         self,
-        messages: list[Message],
+        messages: list[Message] | str,
     ) -> LLMResponse:
 
         return LLMResponse(

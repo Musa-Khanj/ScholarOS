@@ -1,49 +1,48 @@
 """
-ScholarOS
-Event Bus
+ScholarOS Event Bus.
 
-Version : 2.0
-Status  : In Development
-Python  : 3.14+
-
-Description
------------
-Provides publish-subscribe messaging for
-ScholarOS.
-
-Components communicate by publishing events.
-Interested listeners subscribe to specific
-event names.
-
-The EventBus contains no application logic.
-It only routes events.
+Central publish-subscribe event routing engine with support for:
+- Synchronous and asynchronous publication and dispatch
+- Priority-ordered handler invocation
+- Predicate filtering and pattern matching
+- Interceptor middleware pipeline
+- Propagation cancellation and execution context
 """
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from typing import Any
 
+from scholaros.events.context import EventContext
+from scholaros.events.dispatcher import EventDispatcher
 from scholaros.events.event import Event
+from scholaros.events.middleware import EventMiddleware, MiddlewarePipeline
+from scholaros.events.priority import EventPriority
+from scholaros.events.registry import EventRegistry, Subscription
+from scholaros.events.types import EventFilter, EventHandler
 
-EventHandler = Callable[[Event], Any]
 
 class EventBus:
     """
-    Publish-subscribe event dispatcher.
+    Publish-subscribe event dispatcher and routing engine.
     """
 
-    def __init__(
-        self,
-    ) -> None:
-        """
-        Initialize the event bus.
-        """
+    def __init__(self, stop_on_error: bool = False) -> None:
+        """Initialize the event bus."""
+        self.registry = EventRegistry()
+        self.dispatcher = EventDispatcher(stop_on_error=stop_on_error)
+        self.middlewares = MiddlewarePipeline()
 
-        self._listeners: dict[
-            str,
-            list[EventHandler],
-        ] = {}
+    # ---------------------------------------------------------
+    # Middleware
+    # ---------------------------------------------------------
+
+    def use(self, middleware: EventMiddleware) -> EventBus:
+        """Add middleware to the dispatch pipeline. Returns self for chaining."""
+        self.middlewares.use(middleware)
+        return self
 
     # ---------------------------------------------------------
     # Subscription
@@ -53,41 +52,43 @@ class EventBus:
         self,
         event_name: str,
         handler: EventHandler,
-    ) -> None:
+        priority: int = EventPriority.NORMAL,
+        filters: list[EventFilter] | None = None,
+        once: bool = False,
+    ) -> Subscription:
         """
-        Subscribe a handler to an event.
+        Subscribe a handler to an event name or pattern.
         """
-
-        if not isinstance(
-            event_name,
-            str,
-        ):
-            raise TypeError(
-                "Event name must be a string."
-            )
+        if not isinstance(event_name, str):
+            raise TypeError("Event name must be a string.")
 
         if not event_name.strip():
-            raise ValueError(
-                "Event name cannot be empty."
-            )
+            raise ValueError("Event name cannot be empty.")
 
         if not (
             callable(handler)
             or hasattr(handler, "handle")
+            or hasattr(handler, "handle_async")
         ):
             raise TypeError(
-                "Handler must be callable or implement handle()."
+                "Handler must be callable or implement handle() / handle_async()."
             )
 
-        listeners = self._listeners.setdefault(
-            event_name,
-            [],
+        # If handler has priority or filters defined on instance, use as default
+        handler_priority = getattr(handler, "priority", priority)
+        handler_filters = list(filters or [])
+        if hasattr(handler, "filters") and isinstance(handler.filters, list):
+            for f in handler.filters:
+                if f not in handler_filters:
+                    handler_filters.append(f)
+
+        return self.registry.register(
+            event_pattern=event_name,
+            handler=handler,
+            priority=handler_priority,
+            filters=handler_filters,
+            once=once,
         )
-
-        if handler not in listeners:
-            listeners.append(
-                handler,
-            )
 
     def unsubscribe(
         self,
@@ -97,65 +98,76 @@ class EventBus:
         """
         Remove a subscribed handler.
 
-        Returns
-        -------
-        bool
-            True if removed.
+        Returns True if removed.
         """
-
-        listeners = self._listeners.get(
-            event_name,
-        )
-
-        if listeners is None:
-            return False
-
-        try:
-            listeners.remove(
-                handler,
-            )
-
-            if not listeners:
-                del self._listeners[
-                    event_name
-                ]
-
-            return True
-
-        except ValueError:
-            return False
+        return self.registry.unregister(event_name, handler)
 
     # ---------------------------------------------------------
-    # Publishing
+    # Publishing & Dispatching
     # ---------------------------------------------------------
 
     def publish(
         self,
         event: Event,
-    ) -> None:
+        context: EventContext | None = None,
+    ) -> list[Any]:
         """
-        Publish an event.
+        Publish an event synchronously through middleware and matched handlers.
         """
+        if not isinstance(event, Event):
+            raise TypeError("Expected Event instance.")
 
-        if not isinstance(
-            event,
-            Event,
-        ):
-            raise TypeError(
-                "Expected Event instance."
-            )
+        ctx = context or EventContext()
+        subscriptions = self.registry.get_subscriptions_for(event)
 
-        listeners = self._listeners.get(
-            event.name,
-            (),
-        )
+        # One-shot subscription cleanup
+        for sub in subscriptions:
+            if sub.once:
+                self.registry.remove_subscription(sub)
 
-        for handler in tuple(listeners):
+        def terminal_dispatch(evt: Event, c: EventContext) -> list[Any]:
+            return self.dispatcher.dispatch(evt, subscriptions, c)
 
-            if callable(handler):
-                handler(event)
-            else:
-                handler.handle(event)
+        return self.middlewares.execute(event, ctx, terminal_dispatch)
+
+    async def publish_async(
+        self,
+        event: Event,
+        context: EventContext | None = None,
+    ) -> list[Any]:
+        """
+        Publish an event asynchronously through middleware and matched handlers.
+        """
+        if not isinstance(event, Event):
+            raise TypeError("Expected Event instance.")
+
+        ctx = context or EventContext()
+        subscriptions = self.registry.get_subscriptions_for(event)
+
+        for sub in subscriptions:
+            if sub.once:
+                self.registry.remove_subscription(sub)
+
+        async def terminal_async_dispatch(evt: Event, c: EventContext) -> list[Any]:
+            return await self.dispatcher.dispatch_async(evt, subscriptions, c)
+
+        return await self.middlewares.execute_async(event, ctx, terminal_async_dispatch)
+
+    def dispatch(
+        self,
+        event: Event,
+        context: EventContext | None = None,
+    ) -> list[Any]:
+        """Alias for publish()."""
+        return self.publish(event, context=context)
+
+    async def dispatch_async(
+        self,
+        event: Event,
+        context: EventContext | None = None,
+    ) -> list[Any]:
+        """Alias for publish_async()."""
+        return await self.publish_async(event, context=context)
 
     # ---------------------------------------------------------
     # Introspection
@@ -165,55 +177,27 @@ class EventBus:
         self,
         event_name: str,
     ) -> tuple[EventHandler, ...]:
-        """
-        Return listeners for an event.
-        """
+        """Return listeners registered for an event name."""
+        return self.registry.listeners_for(event_name)
 
-        return tuple(
-            self._listeners.get(
-                event_name,
-                (),
-            )
-        )
-
-    def event_names(
-        self,
-    ) -> tuple[str, ...]:
-        """
-        Return registered event names.
-        """
-
-        return tuple(
-            sorted(
-                self._listeners.keys(),
-            )
-        )
+    def event_names(self) -> tuple[str, ...]:
+        """Return registered event names."""
+        return self.registry.event_names()
 
     def has_subscribers(
         self,
         event_name: str,
     ) -> bool:
-        """
-        Return True if listeners exist.
-        """
-
-        return (
-            event_name
-            in self._listeners
-        )
+        """Return True if listeners exist for this event name."""
+        return self.registry.has_subscribers(event_name)
 
     # ---------------------------------------------------------
     # Maintenance
     # ---------------------------------------------------------
 
-    def clear(
-        self,
-    ) -> None:
-        """
-        Remove every subscription.
-        """
-
-        self._listeners.clear()
+    def clear(self) -> None:
+        """Remove every subscription."""
+        self.registry.clear()
 
     # ---------------------------------------------------------
     # Magic Methods
@@ -223,41 +207,23 @@ class EventBus:
         self,
         event_name: object,
     ) -> bool:
-        """
-        Support:
+        return event_name in self.registry
 
-            if "chat.opened" in bus:
-        """
+    def __len__(self) -> int:
+        """Number of registered event names."""
+        return len(self.event_names())
 
-        return (
-            isinstance(
-                event_name,
-                str,
-            )
-            and event_name
-            in self._listeners
-        )
 
-    def __len__(
-        self,
-    ) -> int:
-        """
-        Number of registered event names.
-        """
-
-        return len(
-            self._listeners,
-        )
-
-    def __repr__(
-        self,
-    ) -> str:
-        """
-        Developer representation.
-        """
-
+    def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}("
-            f"events={len(self)}"
+            f"events={len(self.event_names())}, "
+            f"subscriptions={len(self.registry)}"
             f")"
         )
+
+
+__all__ = [
+    "EventBus",
+    "EventHandler",
+]

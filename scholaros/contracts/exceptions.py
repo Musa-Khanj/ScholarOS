@@ -1,38 +1,27 @@
-class ScholarOSError(Exception):
-    """Base exception for ScholarOS."""
+from __future__ import annotations
 
+from scholaros.core.exceptions import (
+    AgentError,
+    ConfigurationError,
+    LLMError,
+    MemoryError,
+    PluginError,
+    RAGError,
+    RegistryError,
+    ScholarOSError,
+    ToolError,
+    VisionError,
+)
 
-class ConfigurationError(ScholarOSError):
-    """Configuration failure."""
-
-
-class PluginError(ScholarOSError):
-    """Plugin failure."""
-
-
-class ToolError(ScholarOSError):
-    """Tool failure."""
-
-
-class AgentError(ScholarOSError):
-    """Agent failure."""
-
-
-class RegistryError(ScholarOSError):
-    """Registry failure."""
-
-
-class MemoryError(ScholarOSError):
-    """Memory subsystem failure."""
-
-
-class VisionError(ScholarOSError):
-    """Vision subsystem failure."""
-
-
-class LLMError(ScholarOSError):
-    """LLM subsystem failure."""
-
-
-class RAGError(ScholarOSError):
-    """RAG subsystem failure."""
+__all__ = [
+    "ScholarOSError",
+    "ConfigurationError",
+    "PluginError",
+    "ToolError",
+    "AgentError",
+    "RegistryError",
+    "MemoryError",
+    "VisionError",
+    "LLMError",
+    "RAGError",
+]
