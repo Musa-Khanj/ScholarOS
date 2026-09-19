@@ -4,13 +4,13 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1340%2B%20passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-1370%2B%20passed-brightgreen.svg)](tests/)
 [![Static Analysis](https://img.shields.io/badge/mypy-checked-blue.svg)](https://mypy.readthedocs.io/)
 [![Linter](https://img.shields.io/badge/ruff-clean-orange.svg)](https://docs.astral.sh/ruff/)
 
 **A modular, multi-agent AI research operating system orchestrating local language models, retrieval-augmented generation (RAG), domain tools, and scientific literature workflows.**
 
-[Documentation](docs/index.md) • [Installation](docs/user/installation.md) • [First Launch](docs/user/first_launch.md) • [Architecture](docs/architecture/reference.md) • [Contributing](docs/developer/contributing.md)
+[Documentation](docs/index.md) • [Release Notes](RELEASE_NOTES.md) • [Installation](docs/user/installation.md) • [Architecture](docs/architecture/reference.md) • [Contributing](CONTRIBUTING.md) • [Security](SECURITY.md)
 
 </div>
 
@@ -120,15 +120,16 @@ For complete technical specifications, see the [Architecture Reference](docs/arc
 - [Plugin Development Guide](docs/developer/plugin_development.md)
 - [AI Provider Development Guide](docs/developer/provider_development.md)
 - [Testing & Quality Engineering](docs/developer/testing.md)
-- [Contributing & PR Guidelines](docs/developer/contributing.md)
+- [Contributing & PR Guidelines](CONTRIBUTING.md)
+- [Security Policy & Vulnerability Disclosure](SECURITY.md)
 
 ---
 
 ## 🧪 Testing & Quality Standards
 
 ScholarOS enforces strict quality engineering:
-- **1,340+ Tests**: Comprehensive unit, integration, and workload benchmarks.
-- **Zero Type Errors**: 100% clean `mypy scholaros scripts` across 380+ source files.
+- **1,370+ Tests**: Comprehensive unit, integration, and workload benchmarks.
+- **Zero Type Errors**: 100% clean `mypy scholaros scripts` across 388 source files.
 - **Zero Lint Errors**: 100% clean `ruff check scholaros tests scripts`.
 
 Run the test suite locally:

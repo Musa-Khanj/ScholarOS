@@ -1,0 +1,30 @@
+name: 🔬 Scientific Workflow Inquiry
+description: Inquire about scientific domain workflows, literature ingestion, or RAG quality
+title: "[Research]: "
+labels: ["research", "methodology"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for feedback, benchmark proposals, or workflow requests specific to scientific literature, citations, or domain-specific research tasks.
+  - type: textarea
+    id: domain
+    attributes:
+      label: Scientific Domain / Discipline
+      description: e.g., Computer Science (Machine Learning), Bio-informatics, Physics, Economics.
+      placeholder: Natural Language Processing / Information Retrieval
+    validations:
+      required: true
+  - type: textarea
+    id: workflow-details
+    attributes:
+      label: Workflow Details
+      description: What specific literature, format, or methodology are you working with?
+      placeholder: Ingesting ArXiv PDFs, generating systematic literature reviews, resolving BibTeX citations...
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Observations or Feedback
+      description: How did ScholarOS perform, and what would improve your research productivity?
