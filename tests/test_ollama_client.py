@@ -126,4 +126,3 @@ def test_generate_calls_post():
 
     client._post.assert_called_once()
 
-    

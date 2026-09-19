@@ -131,4 +131,3 @@ class PromptCatalog:
         return len(
             self._templates
         )
-    

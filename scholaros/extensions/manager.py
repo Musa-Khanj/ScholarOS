@@ -14,6 +14,8 @@ extensions.
 
 from __future__ import annotations
 
+from typing import Any
+
 from scholaros.extensions.extension import Extension
 
 
@@ -63,6 +65,16 @@ class ExtensionManager:
 
         return self._extensions[name]
 
+    def get_optional(
+        self,
+        name: str,
+    ) -> Extension | None:
+        """
+        Return the specified extension if registered, or None.
+        """
+
+        return self._extensions.get(name)
+
     def contains(
         self,
         name: str,
@@ -98,6 +110,56 @@ class ExtensionManager:
         """
 
         self._extensions.clear()
+
+    def enable(
+        self,
+        name: str,
+    ) -> None:
+        """Enable an extension."""
+        self.get(name).enable()
+
+    def disable(
+        self,
+        name: str,
+    ) -> None:
+        """Disable an extension."""
+        self.get(name).disable()
+
+    def execute(
+        self,
+        name: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Execute an extension."""
+        ext = self.get(name)
+        if not ext.enabled:
+            raise RuntimeError(f"Extension '{name}' is currently disabled.")
+        return ext.execute(*args, **kwargs)
+
+    def list_extensions(
+        self,
+        enabled_only: bool = False,
+    ) -> list[Extension]:
+        """Return list of extensions."""
+        exts = list(self._extensions.values())
+        if enabled_only:
+            return [e for e in exts if e.enabled]
+        return exts
+
+    def get_by_extension_point(
+        self,
+        point: str,
+        enabled_only: bool = True,
+    ) -> list[Extension]:
+        """Return extensions targeting a specific extension point."""
+        exts = [
+            e for e in self._extensions.values()
+            if getattr(e, "extension_point", "general") == point
+        ]
+        if enabled_only:
+            return [e for e in exts if e.enabled]
+        return exts
 
     @property
     def extensions(

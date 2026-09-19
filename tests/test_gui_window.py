@@ -194,7 +194,7 @@ def test_build_sets_window_configuration(mock_welcome, mock_chat):
     window._build_body = Mock()
     window._build_sidebar = Mock()
     window._build_workspace = Mock()
-    window._build_toolbar = Mock()  
+    window._build_toolbar = Mock()
     window._build_statusbar = Mock()
     window._create_views = Mock()
 

@@ -18,7 +18,7 @@ from scholaros.plugins.manager import PluginManager
 from scholaros.plugins.registry import PluginRegistry
 
 if TYPE_CHECKING:
-    from scholaros.container.container import Container
+    pass
 
 
 class PluginService(Service):

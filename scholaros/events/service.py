@@ -7,7 +7,7 @@ and registering event components into the dependency injection container.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from scholaros.core.base import ComponentMetadata
 from scholaros.events.bus import EventBus

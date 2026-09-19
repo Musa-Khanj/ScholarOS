@@ -11,8 +11,6 @@ Central publish-subscribe event routing engine with support for:
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Callable
 from typing import Any
 
 from scholaros.events.context import EventContext

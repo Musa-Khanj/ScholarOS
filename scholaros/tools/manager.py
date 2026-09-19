@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from scholaros.tools.registry import ToolRegistry
 from scholaros.tools.result import ToolResult
 from scholaros.tools.tool import Tool
@@ -99,15 +101,43 @@ class ToolManager:
 
         self.get(name).disable()
 
+    def get_tool(
+        self,
+        name: str,
+    ) -> Tool | None:
+        """
+        Return a registered tool or None if not found.
+        """
+        if self.contains(name):
+            return self.get(name)
+        return None
+
+    def list_tools(
+        self,
+        enabled_only: bool = False,
+    ) -> list[Tool]:
+        """
+        Return list of all registered tools, optionally filtering by enabled status.
+        """
+        tools = [self.get(n) for n in self._registry.names()]
+        if enabled_only:
+            return [t for t in tools if t.is_enabled]
+        return tools
+
     def execute(
         self,
         name: str,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> ToolResult:
         """
         Execute a registered tool.
         """
+        if not self.contains(name):
+            return ToolResult(
+                success=False,
+                error=f"Tool '{name}' not found.",
+            )
 
         return self.get(name).execute(
             *args,

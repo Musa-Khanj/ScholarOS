@@ -16,8 +16,10 @@ application. Business logic belongs elsewhere.
 
 from __future__ import annotations
 
+from typing import Any
 import tkinter as tk
 from tkinter import ttk
+
 
 from scholaros.gui.constants import (
     APPLICATION_HEIGHT,
@@ -75,6 +77,11 @@ class GUIWindow:
 
         self._welcome_view: WelcomeView | None = None
         self._chat_panel: ChatPanel | None = None
+        self._research_view: Any | None = None
+        self._library_view: Any | None = None
+        self._plugins_view: Any | None = None
+        self._settings_view: Any | None = None
+        self._current_status: str = STATUS_READY_TEXT
 
     # -----------------------------------------------------
     # Properties
@@ -157,6 +164,30 @@ class GUIWindow:
 
         return self._chat_panel
 
+    @property
+    def research_view(
+        self,
+    ) -> Any | None:
+        return self._research_view
+
+    @property
+    def library_view(
+        self,
+    ) -> Any | None:
+        return self._library_view
+
+    @property
+    def plugins_view(
+        self,
+    ) -> Any | None:
+        return self._plugins_view
+
+    @property
+    def settings_view(
+        self,
+    ) -> Any | None:
+        return self._settings_view
+
     # -----------------------------------------------------
     # Public API
     # -----------------------------------------------------
@@ -186,12 +217,16 @@ class GUIWindow:
 
         self.root.mainloop()
 
+    def show_home(
+        self,
+    ) -> None:
+        self.show_welcome()
+
     def show_welcome(
         self,
     ) -> None:
 
         if self.welcome_view is not None:
-
             self.welcome_view.show()
 
     def show_chat(
@@ -199,8 +234,101 @@ class GUIWindow:
     ) -> None:
 
         if self.chat_panel is not None:
-
             self.chat_panel.show()
+
+    def show_research(
+        self,
+    ) -> None:
+        if self._research_view is None and self._workspace is not None:
+            from scholaros.gui.views.workspace_views import ResearchView
+            self._research_view = ResearchView(parent=self._workspace)
+            if hasattr(self._research_view, "frame") and hasattr(self._research_view.frame, "grid"):
+                self._research_view.frame.grid(row=0, column=0, sticky="nsew")
+        if self._research_view is not None:
+            if hasattr(self._research_view, "show"):
+                self._research_view.show()
+            elif hasattr(self._research_view, "frame") and hasattr(self._research_view.frame, "tkraise"):
+                self._research_view.frame.tkraise()
+
+    def show_library(
+        self,
+    ) -> None:
+        if self._library_view is None and self._workspace is not None:
+            from scholaros.gui.views.workspace_views import LibraryView
+            self._library_view = LibraryView(parent=self._workspace)
+            if hasattr(self._library_view, "frame") and hasattr(self._library_view.frame, "grid"):
+                self._library_view.frame.grid(row=0, column=0, sticky="nsew")
+        if self._library_view is not None:
+            if hasattr(self._library_view, "show"):
+                self._library_view.show()
+            elif hasattr(self._library_view, "frame") and hasattr(self._library_view.frame, "tkraise"):
+                self._library_view.frame.tkraise()
+
+    def show_plugins(
+        self,
+    ) -> None:
+        if self._plugins_view is None and self._workspace is not None:
+            from scholaros.gui.views.workspace_views import PluginsView
+            self._plugins_view = PluginsView(parent=self._workspace)
+            if hasattr(self._plugins_view, "frame") and hasattr(self._plugins_view.frame, "grid"):
+                self._plugins_view.frame.grid(row=0, column=0, sticky="nsew")
+        if self._plugins_view is not None:
+            if hasattr(self._plugins_view, "show"):
+                self._plugins_view.show()
+            elif hasattr(self._plugins_view, "frame") and hasattr(self._plugins_view.frame, "tkraise"):
+                self._plugins_view.frame.tkraise()
+
+    def show_settings(
+        self,
+    ) -> None:
+        if self._settings_view is None and self._workspace is not None:
+            from scholaros.gui.views.workspace_views import SettingsView
+            self._settings_view = SettingsView(parent=self._workspace)
+            if hasattr(self._settings_view, "frame") and hasattr(self._settings_view.frame, "grid"):
+                self._settings_view.frame.grid(row=0, column=0, sticky="nsew")
+        if self._settings_view is not None:
+            if hasattr(self._settings_view, "show"):
+                self._settings_view.show()
+            elif hasattr(self._settings_view, "frame") and hasattr(self._settings_view.frame, "tkraise"):
+                self._settings_view.frame.tkraise()
+
+    def show_view(
+        self,
+        name: str,
+    ) -> None:
+        """Route view switching by canonical name."""
+        canonical = name.strip().lower()
+        mapping = {
+            "home": self.show_home,
+            "welcome": self.show_welcome,
+            "chat": self.show_chat,
+            "research": self.show_research,
+            "library": self.show_library,
+            "knowledge": self.show_library,
+            "plugins": self.show_plugins,
+            "settings": self.show_settings,
+        }
+        handler = mapping.get(canonical, self.show_home)
+        handler()
+
+    def set_status(
+        self,
+        message: str,
+        error: bool = False,
+    ) -> None:
+        """Update the status bar message and optional error indication."""
+        self._current_status = message
+        if self._statusbar is not None:
+            try:
+                self._statusbar.configure(text=message)
+            except Exception:
+                pass
+
+    def get_status(
+        self,
+    ) -> str:
+        """Return the current status bar message."""
+        return getattr(self, "_current_status", STATUS_READY_TEXT)
 
     # -----------------------------------------------------
     # Window
@@ -300,18 +428,20 @@ class GUIWindow:
             fill="y",
         )
 
-        for text in (
-            "🏠 Home",
-            "💬 Chat",
-            "📄 Research",
-            "📚 Library",
-            "🧩 Plugins",
-            "⚙ Settings",
-        ):
+        button_definitions = (
+            ("🏠 Home", self.show_home),
+            ("💬 Chat", self.show_chat),
+            ("📄 Research", self.show_research),
+            ("📚 Library", self.show_library),
+            ("🧩 Plugins", self.show_plugins),
+            ("⚙ Settings", self.show_settings),
+        )
 
+        for text, command in button_definitions:
             ttk.Button(
                 frame,
                 text=text,
+                command=command,
             ).pack(
                 fill="x",
                 pady=4,

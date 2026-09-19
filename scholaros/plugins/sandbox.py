@@ -26,6 +26,18 @@ class PluginSandbox(ABC):
         """
 
     @abstractmethod
+    def execute_safe(
+        self,
+        target: Callable[..., Any],
+        *args: Any,
+        default: Any = None,
+        **kwargs: Any,
+    ) -> tuple[Any, Exception | None]:
+        """
+        Execute target safely, catching unhandled exceptions and returning (result, exception).
+        """
+
+    @abstractmethod
     def is_allowed(self, action: str) -> bool:
         """
         Check if a given action or system call is allowed by the sandbox.
@@ -34,7 +46,7 @@ class PluginSandbox(ABC):
 
 class DefaultSandbox(PluginSandbox):
     """
-    Default pass-through sandbox that integrates with PermissionManager.
+    Default pass-through sandbox that integrates with PermissionManager and captures errors.
     """
 
     def __init__(
@@ -44,6 +56,26 @@ class DefaultSandbox(PluginSandbox):
     ) -> None:
         self.plugin_id = plugin_id
         self.permission_manager = permission_manager
+        self._errors: list[Exception] = []
+
+    @property
+    def errors(self) -> list[Exception]:
+        """Return list of trapped exceptions."""
+        return list(self._errors)
+
+    @property
+    def error_count(self) -> int:
+        """Return total number of trapped errors."""
+        return len(self._errors)
+
+    @property
+    def last_error(self) -> Exception | None:
+        """Return the most recent trapped error, if any."""
+        return self._errors[-1] if self._errors else None
+
+    def clear_errors(self) -> None:
+        """Clear recorded errors."""
+        self._errors.clear()
 
     def is_allowed(self, action: str) -> bool:
         """
@@ -58,6 +90,23 @@ class DefaultSandbox(PluginSandbox):
         Execute the target callable directly.
         """
         return target(*args, **kwargs)
+
+    def execute_safe(
+        self,
+        target: Callable[..., Any],
+        *args: Any,
+        default: Any = None,
+        **kwargs: Any,
+    ) -> tuple[Any, Exception | None]:
+        """
+        Execute target safely, trapping exceptions to prevent plugin crashes from propagating.
+        """
+        try:
+            result = self.execute(target, *args, **kwargs)
+            return result, None
+        except Exception as exc:
+            self._errors.append(exc)
+            return default, exc
 
 
 __all__ = [

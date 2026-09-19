@@ -6,7 +6,6 @@ Provides core AI capabilities and model interactions.
 
 from __future__ import annotations
 
-from typing import Any
 
 from scholaros.services.metadata import ServiceMetadata
 from scholaros.services.service import Service

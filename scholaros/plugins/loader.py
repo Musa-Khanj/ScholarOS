@@ -13,7 +13,6 @@ import inspect
 from pathlib import Path
 import pkgutil
 from types import ModuleType
-from typing import Any
 
 from scholaros.plugins.base import Plugin
 from scholaros.plugins.exceptions import PluginLoadError

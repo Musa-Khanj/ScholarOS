@@ -8,7 +8,7 @@ health checks, and execution capabilities.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any
 
 from scholaros.services.health import HealthStatus, ServiceHealth

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import fnmatch
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from scholaros.events.priority import EventPriority
 from scholaros.events.types import EventFilter, EventHandler

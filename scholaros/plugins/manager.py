@@ -9,14 +9,22 @@ and container/event-bus/configuration integration.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable
 
 from scholaros.events.bus import EventBus
 from scholaros.events.event import Event
-from scholaros.plugins.base import Plugin
+from scholaros.plugins.base import Plugin, PluginContext
 from scholaros.plugins.dependency import DependencyResolver
+
+if TYPE_CHECKING:
+    from scholaros.ai.manager import AIManager
+    from scholaros.ai.provider import AIProvider
+    from scholaros.extensions.extension import Extension
+    from scholaros.extensions.manager import ExtensionManager
+    from scholaros.tools.manager import ToolManager
+    from scholaros.tools.tool import Tool
 from scholaros.plugins.discovery import DiscoveredPlugin, PluginDiscovery
-from scholaros.plugins.exceptions import ManifestError, PluginNotFoundError
+from scholaros.plugins.exceptions import ManifestError
 from scholaros.plugins.installer import PluginInstaller
 from scholaros.plugins.lifecycle import LifecycleTracker, PluginState
 from scholaros.plugins.loader import PluginLoader
@@ -139,10 +147,16 @@ class PluginManager:
         dependency_resolver: DependencyResolver | None = None,
         permission_manager: PermissionManager | None = None,
         sandbox: PluginSandbox | None = None,
+        tool_manager: ToolManager | None = None,
+        extension_manager: ExtensionManager | None = None,
+        ai_manager: AIManager | None = None,
     ) -> None:
         self.container = container
         self.event_bus = event_bus
         self.config = config
+        self.tool_manager = tool_manager
+        self.extension_manager = extension_manager
+        self.ai_manager = ai_manager
 
         self._registry = registry or PluginRegistry()
         self._loader = loader or PluginLoader()
@@ -152,6 +166,12 @@ class PluginManager:
         self._dependencies = dependency_resolver or DependencyResolver()
         self._permissions = permission_manager or PermissionManager(default_allow=True)
         self._sandbox = sandbox or DefaultSandbox(permission_manager=self._permissions)
+
+        # Track registered contributions per plugin
+        self._plugin_tools: dict[str, list[Tool]] = {}
+        self._plugin_extensions: dict[str, list[Extension]] = {}
+        self._plugin_providers: dict[str, list[AIProvider]] = {}
+        self._plugin_services: dict[str, list[type]] = {}
 
         # Apply configuration if provided
         if self.config is not None:
@@ -164,6 +184,123 @@ class PluginManager:
         if isinstance(extra_paths, (list, tuple)):
             for p in extra_paths:
                 self._discovery.add_search_path(p)
+
+    def _create_context(self, plugin_id: str) -> PluginContext:
+        """Create a PluginContext instance for the specified plugin."""
+        plugin = self._registry.get_optional(plugin_id)
+        metadata_dict = plugin.metadata.to_dict() if plugin is not None else {}
+        return PluginContext(
+            plugin_id=plugin_id,
+            container=self.container,
+            event_bus=self.event_bus,
+            tool_manager=self.tool_manager,
+            extension_manager=self.extension_manager,
+            ai_manager=self.ai_manager,
+            config=self.config,
+            metadata=metadata_dict,
+        )
+
+    def _register_contributions(self, plugin: Plugin) -> None:
+        """Register tools, extensions, providers, and services contributed by a plugin."""
+        plugin_id = plugin.id
+
+        # 1. Tools
+        tools, _ = self._sandbox.execute_safe(plugin.get_tools, default=[])
+        if tools and self.tool_manager is not None:
+            self._plugin_tools[plugin_id] = []
+            for tool in tools:
+                self.tool_manager.register(tool)
+                self._plugin_tools[plugin_id].append(tool)
+
+        # 2. Extensions
+        extensions, _ = self._sandbox.execute_safe(plugin.get_extensions, default=[])
+        if extensions and self.extension_manager is not None:
+            self._plugin_extensions[plugin_id] = []
+            for ext in extensions:
+                self.extension_manager.register(ext)
+                self._plugin_extensions[plugin_id].append(ext)
+
+        # 3. AI Providers
+        providers, _ = self._sandbox.execute_safe(plugin.get_providers, default=[])
+        if providers and self.ai_manager is not None:
+            self._plugin_providers[plugin_id] = []
+            for prov in providers:
+                self.ai_manager.register_provider(prov)
+                self._plugin_providers[plugin_id].append(prov)
+
+        # 4. Services
+        services, _ = self._sandbox.execute_safe(plugin.get_services, default=[])
+        if services and self.container is not None:
+            self._plugin_services[plugin_id] = []
+            for svc in services:
+                if isinstance(svc, tuple) and len(svc) == 2:
+                    iface, impl_or_inst = svc
+                    if isinstance(impl_or_inst, type):
+                        self.container.add_singleton(iface, impl_or_inst)
+                    else:
+                        self.container.add_instance(iface, impl_or_inst)
+                    self._plugin_services[plugin_id].append(iface)
+                elif isinstance(svc, type):
+                    self.container.add_singleton(svc, svc)
+                    self._plugin_services[plugin_id].append(svc)
+                else:
+                    svc_type = type(svc)
+                    self.container.add_instance(svc_type, svc)
+                    self._plugin_services[plugin_id].append(svc_type)
+
+    def _unregister_contributions(self, plugin_id: str) -> None:
+        """Unregister all contributions made by a plugin."""
+        # 1. Tools
+        tools = self._plugin_tools.pop(plugin_id, [])
+        if self.tool_manager is not None:
+            for tool in tools:
+                try:
+                    self.tool_manager.unregister(tool.name)
+                except Exception:
+                    pass
+
+        # 2. Extensions
+        extensions = self._plugin_extensions.pop(plugin_id, [])
+        if self.extension_manager is not None:
+            for ext in extensions:
+                try:
+                    self.extension_manager.unregister(ext.name)
+                except Exception:
+                    pass
+
+        # 3. AI Providers
+        providers = self._plugin_providers.pop(plugin_id, [])
+        if self.ai_manager is not None:
+            for prov in providers:
+                try:
+                    self.ai_manager.registry.unregister(prov.name)
+                except Exception:
+                    pass
+
+        # 4. Services
+        services = self._plugin_services.pop(plugin_id, [])
+        if self.container is not None and hasattr(self.container, "registry"):
+            for svc_iface in services:
+                try:
+                    self.container.registry.unregister(svc_iface)
+                except Exception:
+                    pass
+
+    def get_plugin_tools(self, plugin_id: str) -> list[Tool]:
+        """Return tools registered by the given plugin."""
+        return list(self._plugin_tools.get(plugin_id, []))
+
+    def get_plugin_extensions(self, plugin_id: str) -> list[Extension]:
+        """Return extensions registered by the given plugin."""
+        return list(self._plugin_extensions.get(plugin_id, []))
+
+    def get_plugin_providers(self, plugin_id: str) -> list[AIProvider]:
+        """Return AI providers registered by the given plugin."""
+        return list(self._plugin_providers.get(plugin_id, []))
+
+    def get_plugin_services(self, plugin_id: str) -> list[type]:
+        """Return service types registered by the given plugin."""
+        return list(self._plugin_services.get(plugin_id, []))
 
     def _emit(self, event: Event) -> None:
         """Publish an event to the EventBus if available."""
@@ -241,6 +378,8 @@ class PluginManager:
 
         # Update lifecycle to LOADED
         self._lifecycle.transition_to(plugin.id, PluginState.LOADED)
+        ctx = self._create_context(plugin.id)
+        self._sandbox.execute_safe(plugin.on_load, ctx)
         self._emit(PluginLoaded(plugin_id=plugin.id))
 
         return plugin
@@ -264,6 +403,11 @@ class PluginManager:
         # Stop first if active
         if self._lifecycle.is_active(plugin_id):
             self.disable(plugin_id)
+        else:
+            self._unregister_contributions(plugin_id)
+
+        ctx = self._create_context(plugin_id)
+        self._sandbox.execute_safe(plugin.on_unload, ctx)
 
         # Teardown / shutdown
         plugin.shutdown()
@@ -300,8 +444,13 @@ class PluginManager:
             self._lifecycle.transition_to(plugin_id, PluginState.INITIALIZED)
             self._sandbox.execute(plugin.initialize)
 
+        # Register plugin contributions
+        self._register_contributions(plugin)
+
         # Start plugin
         self._lifecycle.transition_to(plugin_id, PluginState.STARTED)
+        ctx = self._create_context(plugin_id)
+        self._sandbox.execute_safe(plugin.on_enable, ctx)
         self._sandbox.execute(plugin.start)
         plugin.enable()  # trigger legacy enable hook if defined
 
@@ -317,9 +466,15 @@ class PluginManager:
         if not self._lifecycle.is_active(plugin_id):
             return
 
+        ctx = self._create_context(plugin_id)
+        self._sandbox.execute_safe(plugin.on_disable, ctx)
+
         self._lifecycle.transition_to(plugin_id, PluginState.STOPPED)
         self._sandbox.execute(plugin.stop)
         plugin.disable()  # trigger legacy disable hook if defined
+
+        # Unregister contributions
+        self._unregister_contributions(plugin_id)
 
         self._emit(PluginStopped(plugin_id=plugin_id))
 
@@ -405,6 +560,10 @@ class PluginManager:
             self.unload(name)
         self._registry.clear()
         self._lifecycle.clear()
+        self._plugin_tools.clear()
+        self._plugin_extensions.clear()
+        self._plugin_providers.clear()
+        self._plugin_services.clear()
 
     @property
     def plugins(self) -> dict[str, Plugin]:

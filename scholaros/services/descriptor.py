@@ -8,7 +8,7 @@ and registration metadata.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Callable
 
 from scholaros.services.diagnostics import ServiceDiagnostics
 from scholaros.services.metadata import ServiceMetadata

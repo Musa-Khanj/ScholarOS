@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any
 
 from scholaros.events.context import EventContext
 from scholaros.events.exceptions import (
-    EventCancelledError,
     EventDispatchError,
     HandlerExecutionError,
 )

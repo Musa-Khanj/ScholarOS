@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import tempfile
 import zipfile
 
 import pytest
@@ -21,33 +20,21 @@ from scholaros.plugins import (
     DependencyError,
     DependencyGraph,
     DependencyResolver,
-    DiscoveredPlugin,
-    InstallationError,
     LifecycleTracker,
     ManifestError,
     Permission,
     PermissionError,
     PermissionManager,
     Plugin,
-    PluginDiscovered,
     PluginDiscovery,
-    PluginInstalled,
     PluginInstaller,
     PluginLifecycleError,
-    PluginLoadError,
-    PluginLoaded,
-    PluginLoader,
     PluginManager,
     PluginManifest,
     PluginMetadata,
     PluginRegistry,
-    PluginRemoved,
-    PluginSandbox,
     PluginService,
-    PluginStarted,
     PluginState,
-    PluginStopped,
-    PluginUnloaded,
 )
 
 

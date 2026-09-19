@@ -68,3 +68,10 @@ def launch_gui() -> None:
     """
 
     GUILauncher().launch()
+
+
+def main() -> None:
+    """
+    Command-line entrypoint to launch ScholarOS GUI.
+    """
+    launch_gui()

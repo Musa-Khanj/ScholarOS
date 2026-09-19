@@ -17,6 +17,21 @@ class EnvironmentReader:
     Reads, parses, and type-casts environment variables from os.environ.
     """
 
+    KNOWN_SECTIONS = frozenset({
+        "paths",
+        "storage",
+        "logging",
+        "llm",
+        "ai",
+        "models",
+        "rag",
+        "retrieval",
+        "knowledge",
+        "plugins",
+        "gui",
+        "server",
+    })
+
     def __init__(self, prefix: str = "SCHOLAROS_") -> None:
         self._prefix = prefix
 
@@ -66,15 +81,14 @@ class EnvironmentReader:
             return default if default is not None else Path()
         return Path(val.strip())
 
-    KNOWN_SECTIONS = frozenset({"paths", "logging", "llm", "server"})
-
     def load_prefixed(self) -> dict[str, Any]:
         """
         Scan os.environ for keys starting with prefix (default: SCHOLAROS_)
         and map them to a nested dictionary.
 
-        Supports double underscore (SCHOLAROS_LOGGING__LEVEL) or standard
-        section prefix matching (SCHOLAROS_LOGGING_LEVEL).
+        Supports multi-level double underscore (SCHOLAROS_AI__PROVIDERS__OPENAI__API_KEY)
+        or standard section prefix matching (SCHOLAROS_LOGGING_LEVEL).
+        Also reads third-party provider keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, OLLAMA_HOST).
         """
         result: dict[str, Any] = {}
         prefix_len = len(self._prefix)
@@ -90,10 +104,11 @@ class EnvironmentReader:
             parsed_value = self._parse_value(value)
 
             if "__" in clean_key:
-                section, key = clean_key.split("__", 1)
-                section_dict = result.setdefault(section, {})
-                if isinstance(section_dict, dict):
-                    section_dict[key] = parsed_value
+                parts = clean_key.split("__")
+                curr = result
+                for part in parts[:-1]:
+                    curr = curr.setdefault(part, {})
+                curr[parts[-1]] = parsed_value
                 continue
 
             parts = clean_key.split("_")
@@ -106,7 +121,36 @@ class EnvironmentReader:
             else:
                 result[clean_key] = parsed_value
 
+        # Ingest standard third-party AI provider environment variables if present
+        self._ingest_standard_provider_keys(result)
+
         return result
+
+    @staticmethod
+    def _ingest_standard_provider_keys(target: dict[str, Any]) -> None:
+        """Check for standard provider keys in os.environ and attach to AI config."""
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        if openai_key:
+            ai_dict = target.setdefault("ai", {})
+            providers_dict = ai_dict.setdefault("providers", {})
+            providers_dict.setdefault("openai", {})["api_key"] = openai_key
+            if ai_dict.get("provider") == "openai" or not ai_dict.get("api_key"):
+                ai_dict.setdefault("api_key", openai_key)
+
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+        if anthropic_key:
+            ai_dict = target.setdefault("ai", {})
+            providers_dict = ai_dict.setdefault("providers", {})
+            providers_dict.setdefault("anthropic", {})["api_key"] = anthropic_key
+            if ai_dict.get("provider") == "anthropic":
+                ai_dict["api_key"] = anthropic_key
+
+        ollama_host = os.environ.get("OLLAMA_HOST") or os.environ.get("OLLAMA_BASE_URL")
+        if ollama_host:
+            ai_dict = target.setdefault("ai", {})
+            ai_dict.setdefault("base_url", ollama_host)
+            providers_dict = ai_dict.setdefault("providers", {})
+            providers_dict.setdefault("ollama", {})["base_url"] = ollama_host
 
     @staticmethod
     def _parse_value(value: str) -> Any:

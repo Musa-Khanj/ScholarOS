@@ -23,7 +23,7 @@ pytest = import_module("pytest")
 def manage_tk_root():
     """
     Prevents multiple Tcl interpreters from being created and destroyed.
-    
+
     On Windows, creating a new tk.Tk() after destroying a previous one
     in the same process causes 'Can't find a usable init.tcl' errors.
     This patch intercepts destroy() calls during tests, keeping the

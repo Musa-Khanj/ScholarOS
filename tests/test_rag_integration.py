@@ -428,4 +428,3 @@ def test_rag_integration_provider_independence():
     )
 
     llm.generate.assert_called_once()
-    

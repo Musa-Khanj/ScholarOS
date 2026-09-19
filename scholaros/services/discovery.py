@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from scholaros.services.service import Service
 
 if TYPE_CHECKING:
-    from scholaros.services.metadata import ServiceMetadata
+    pass
 
 
 class DiscoveredService:

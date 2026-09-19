@@ -60,6 +60,11 @@ class PluginManifest:
     entry_point: str | None = None
     dependencies: list[str] = field(default_factory=list)
     permissions: list[str] = field(default_factory=list)
+    tools: list[str] = field(default_factory=list)
+    services: list[str] = field(default_factory=list)
+    providers: list[str] = field(default_factory=list)
+    extensions: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Normalize attributes and ensure default identifier."""
@@ -69,15 +74,12 @@ class PluginManifest:
         if not self.id:
             self.id = self.name.strip().lower().replace(" ", "_")
 
-        if isinstance(self.dependencies, (tuple, set)):
-            self.dependencies = list(self.dependencies)
-        elif not isinstance(self.dependencies, list):
-            self.dependencies = [str(self.dependencies)] if self.dependencies else []
-
-        if isinstance(self.permissions, (tuple, set)):
-            self.permissions = list(self.permissions)
-        elif not isinstance(self.permissions, list):
-            self.permissions = [str(self.permissions)] if self.permissions else []
+        for attr in ("dependencies", "permissions", "tools", "services", "providers", "extensions", "tags"):
+            val = getattr(self, attr)
+            if isinstance(val, (tuple, set)):
+                setattr(self, attr, list(val))
+            elif not isinstance(val, list):
+                setattr(self, attr, [str(val)] if val else [])
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize manifest to a standard dictionary."""
@@ -95,13 +97,12 @@ class PluginManifest:
         if not name or not isinstance(name, str):
             raise ManifestError("Manifest missing required 'name' field.")
 
-        dependencies = data.get("dependencies", [])
-        if isinstance(dependencies, (str, bytes)):
-            dependencies = [dependencies]
-
-        permissions = data.get("permissions", [])
-        if isinstance(permissions, (str, bytes)):
-            permissions = [permissions]
+        def _to_list(val: Any) -> list[str]:
+            if isinstance(val, (str, bytes)):
+                return [str(val)]
+            if isinstance(val, (list, tuple, set)):
+                return [str(x) for x in val]
+            return []
 
         return cls(
             name=name,
@@ -112,8 +113,13 @@ class PluginManifest:
             license=str(data.get("license", "MIT")),
             id=str(data.get("id", "")),
             entry_point=data.get("entry_point"),
-            dependencies=list(dependencies),
-            permissions=list(permissions),
+            dependencies=_to_list(data.get("dependencies")),
+            permissions=_to_list(data.get("permissions")),
+            tools=_to_list(data.get("tools")),
+            services=_to_list(data.get("services")),
+            providers=_to_list(data.get("providers")),
+            extensions=_to_list(data.get("extensions")),
+            tags=_to_list(data.get("tags")),
         )
 
     @classmethod

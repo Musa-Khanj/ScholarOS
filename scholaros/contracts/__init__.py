@@ -1,3 +1,9 @@
+"""
+ScholarOS Contracts and System Interfaces.
+"""
+
+from __future__ import annotations
+
 from scholaros.contracts.component import (
     Component,
     ComponentMetadata,
@@ -15,17 +21,29 @@ from scholaros.contracts.exceptions import (
     ToolError,
     VisionError,
 )
+from scholaros.contracts.retrieval import (
+    ContextBuilderProtocol,
+    FilterProtocol,
+    HybridRetrieverContract,
+    PipelineProtocol,
+    RerankerProtocol,
+    RetrieverProtocol,
+    StrategyProtocol,
+    VectorRetrieverContract,
+)
 from scholaros.contracts.types import (
     ComponentType,
     EventPriority,
 )
 
 __all__ = [
+    # Components & Lifecycles
     "Component",
     "ComponentMetadata",
     "ComponentStatus",
     "ComponentType",
     "EventPriority",
+    # Exceptions
     "ScholarOSError",
     "ConfigurationError",
     "PluginError",
@@ -36,4 +54,13 @@ __all__ = [
     "VisionError",
     "LLMError",
     "RAGError",
+    # Retrieval Contracts
+    "RetrieverProtocol",
+    "RerankerProtocol",
+    "FilterProtocol",
+    "PipelineProtocol",
+    "ContextBuilderProtocol",
+    "StrategyProtocol",
+    "VectorRetrieverContract",
+    "HybridRetrieverContract",
 ]

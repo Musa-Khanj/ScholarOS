@@ -7,6 +7,7 @@ from scholaros.gui.application import (
 )
 from scholaros.gui.builder import (
     GUIBuilder,
+    create_application,
     create_gui,
 )
 from scholaros.gui.component import (
@@ -18,6 +19,7 @@ from scholaros.gui.integration import (
 from scholaros.gui.launcher import (
     GUILauncher,
     launch_gui,
+    main,
 )
 
 __all__ = [

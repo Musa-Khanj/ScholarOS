@@ -14,15 +14,13 @@ Central orchestrator for ScholarOS services, responsible for:
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any, Callable, Iterator, TypeVar
+from typing import TYPE_CHECKING, Callable, Iterator, TypeVar
 
 from scholaros.services.dependency import ServiceDependencyResolver
 from scholaros.services.descriptor import ServiceDescriptor
 from scholaros.services.diagnostics import ServiceDiagnostics
 from scholaros.services.discovery import DiscoveredService, ServiceDiscovery
 from scholaros.services.exceptions import (
-    ServiceAlreadyRegisteredError,
-    ServiceLifecycleError,
     ServiceNotFoundError,
 )
 from scholaros.services.health import HealthStatus, ServiceHealth
@@ -34,7 +32,6 @@ from scholaros.services.lifecycle import (
     ServiceRestarted,
     ServiceShutdown,
     ServiceStarted,
-    ServiceState,
     ServiceStopped,
 )
 from scholaros.services.metadata import ServiceMetadata

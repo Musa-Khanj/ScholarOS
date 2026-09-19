@@ -62,6 +62,15 @@ class Extension(ABC):
         is enabled.
         """
 
+    @property
+    def extension_point(
+        self,
+    ) -> str:
+        """
+        Return the target extension point identifier.
+        """
+        return getattr(self, "_extension_point", "general")
+
     @abstractmethod
     def enable(
         self,

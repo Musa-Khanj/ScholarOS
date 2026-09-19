@@ -7,10 +7,33 @@ Defines the abstract base interface for ScholarOS plugins.
 from __future__ import annotations
 
 from abc import ABC
-from typing import Any
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 from scholaros.plugins.manifest import PluginManifest
 from scholaros.plugins.metadata import PluginMetadata
+
+if TYPE_CHECKING:
+    from scholaros.ai.manager import AIManager
+    from scholaros.events.bus import EventBus
+    from scholaros.extensions.manager import ExtensionManager
+    from scholaros.tools.manager import ToolManager
+
+
+@dataclass(slots=True)
+class PluginContext:
+    """
+    Runtime execution context provided to plugins by PluginManager.
+    """
+
+    plugin_id: str
+    container: Any | None = None
+    event_bus: EventBus | None = None
+    tool_manager: ToolManager | None = None
+    extension_manager: ExtensionManager | None = None
+    ai_manager: AIManager | None = None
+    config: Any | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class Plugin(ABC):
@@ -118,6 +141,53 @@ class Plugin(ABC):
         """
 
     # ---------------------------------------------------------
+    # Extensibility Contribution Hooks
+    # ---------------------------------------------------------
+
+    def get_tools(self) -> list[Any]:
+        """
+        Return Tool instances provided by this plugin.
+        These tools are automatically registered into ToolManager when enabled.
+        """
+        return []
+
+    def get_services(self) -> list[tuple[type, Any] | Any]:
+        """
+        Return service bindings or instances provided by this plugin.
+        """
+        return []
+
+    def get_providers(self) -> list[Any]:
+        """
+        Return AIProvider instances provided by this plugin.
+        These providers are automatically registered into AIManager when enabled.
+        """
+        return []
+
+    def get_extensions(self) -> list[Any]:
+        """
+        Return Extension instances provided by this plugin.
+        These extensions are automatically registered into ExtensionManager when enabled.
+        """
+        return []
+
+    # ---------------------------------------------------------
+    # Contextual Lifecycle Hooks
+    # ---------------------------------------------------------
+
+    def on_load(self, context: PluginContext) -> None:
+        """Called when the plugin is loaded into memory."""
+
+    def on_enable(self, context: PluginContext) -> None:
+        """Called when the plugin is enabled."""
+
+    def on_disable(self, context: PluginContext) -> None:
+        """Called when the plugin is disabled."""
+
+    def on_unload(self, context: PluginContext) -> None:
+        """Called when the plugin is unloaded."""
+
+    # ---------------------------------------------------------
     # Backward Compatibility Hooks
     # ---------------------------------------------------------
 
@@ -141,4 +211,5 @@ class Plugin(ABC):
 
 __all__ = [
     "Plugin",
+    "PluginContext",
 ]

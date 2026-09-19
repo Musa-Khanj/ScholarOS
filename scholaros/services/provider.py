@@ -101,7 +101,7 @@ def configure_services(
 
         manager = ServiceManager(container=container)
 
-    provider = ServiceProvider(manager=manager, container=container)
+    _ = ServiceProvider(manager=manager, container=container)
     return manager
 
 

@@ -16,7 +16,7 @@ from scholaros.services.exceptions import (
 )
 
 if TYPE_CHECKING:
-    from scholaros.services.descriptor import ServiceDescriptor
+    pass
 
 
 class ServiceDependencyResolver:

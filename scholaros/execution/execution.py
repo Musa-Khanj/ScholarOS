@@ -19,7 +19,11 @@ Responsibilities
 
 from __future__ import annotations
 
-from scholaros.workflow import Workflow
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scholaros.workflow.workflow import Workflow
+
 
 
 class Execution:

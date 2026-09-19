@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Iterator
 
 from scholaros.plugins.base import Plugin
-from scholaros.plugins.exceptions import PluginNotFoundError
 
 
 class PluginRegistry:

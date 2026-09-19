@@ -8,7 +8,7 @@ and event publishing.
 
 from __future__ import annotations
 
-from scholaros.plugins.base import Plugin
+from scholaros.plugins.base import Plugin, PluginContext
 from scholaros.plugins.dependency import (
     DependencyGraph,
     DependencyResolver,
@@ -71,6 +71,7 @@ __all__ = [
     "PermissionError",
     "PermissionManager",
     "Plugin",
+    "PluginContext",
     "PluginDiscovered",
     "PluginDiscovery",
     "PluginError",

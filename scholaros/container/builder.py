@@ -12,9 +12,6 @@ from collections.abc import Callable
 import inspect
 from typing import Any, TypeAlias
 
-from scholaros.container.exceptions import (
-    ResolutionError,
-)
 from scholaros.container.resolver import DependencyResolver
 
 Resolver: TypeAlias = Callable[[type], Any]

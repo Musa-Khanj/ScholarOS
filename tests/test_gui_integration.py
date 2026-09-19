@@ -33,7 +33,7 @@ def create_integration() -> GUIIntegration:
         else:
             _root = tk.Tk()
             _root.withdraw()
-            
+
     # Clear any existing children from previous tests
     for child in list(_root.winfo_children()):
         try:
@@ -56,8 +56,8 @@ def create_integration() -> GUIIntegration:
 
 def teardown_module(module):
     """
-    Do not destroy the shared Tk root to prevent 
-    Tcl interpreter corruption across multiple 
+    Do not destroy the shared Tk root to prevent
+    Tcl interpreter corruption across multiple
     test modules in the same pytest session.
     """
     pass

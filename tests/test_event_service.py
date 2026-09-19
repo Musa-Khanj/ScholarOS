@@ -112,7 +112,7 @@ def test_event_context_propagation_stop():
 
 
 def test_event_middleware_pipeline():
-    from scholaros.events import Event, EventContext, EventMiddleware
+    from scholaros.events import Event, EventMiddleware
 
     class LoggingMiddleware(EventMiddleware):
         def __init__(self):
@@ -139,7 +139,6 @@ def test_event_middleware_pipeline():
 
 @pytest.mark.anyio
 async def test_async_event_dispatch():
-    import pytest
     from scholaros.events import AsyncSubscriber, Event
 
     bus = EventBus()

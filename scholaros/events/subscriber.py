@@ -8,7 +8,6 @@ predicate filters, and optional async event consumption.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from scholaros.events.priority import EventPriority
