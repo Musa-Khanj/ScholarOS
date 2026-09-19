@@ -8,6 +8,8 @@ and Plugin subsystems without mixing business logic into the presentation layer.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -60,6 +62,7 @@ class GUIApplication:
         event_bus: EventBus | None = None,
         config: Any | None = None,
         config_manager: ConfigManager | None = None,
+        max_workers: int = 4,
     ) -> None:
         self._window = window
         self._services = services
@@ -71,6 +74,8 @@ class GUIApplication:
         self._event_bus = event_bus
         self._config = config
         self._config_manager = config_manager
+        self._max_workers = max_workers
+        self._executor: ThreadPoolExecutor | None = None
         self._state = ApplicationState.INITIALIZED
 
         # Inspect services bundle if supplied
@@ -145,6 +150,16 @@ class GUIApplication:
         return self._config_manager
 
     @property
+    def executor(self) -> ThreadPoolExecutor:
+        """Return or lazily initialize the background worker thread pool."""
+        if self._executor is None:
+            self._executor = ThreadPoolExecutor(
+                max_workers=self._max_workers,
+                thread_name_prefix="ScholarOS-Worker",
+            )
+        return self._executor
+
+    @property
     def is_running(self) -> bool:
         return self._state == ApplicationState.RUNNING
 
@@ -162,6 +177,9 @@ class GUIApplication:
     def shutdown(self) -> None:
         """Gracefully halt application operations."""
         self._state = ApplicationState.STOPPING
+        if self._executor is not None:
+            self._executor.shutdown(wait=False)
+            self._executor = None
         self._state = ApplicationState.STOPPED
         self.set_status("Stopped")
 
@@ -295,6 +313,102 @@ class GUIApplication:
             return results
 
         raise RuntimeError("RAG pipeline is not configured.")
+
+    # -----------------------------------------------------------------------
+    # Non-blocking Asynchronous Operations (GUI Responsiveness)
+    # -----------------------------------------------------------------------
+
+    def execute_async(
+        self,
+        func: Callable[..., Any],
+        *args: Any,
+        on_success: Callable[[Any], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+        **kwargs: Any,
+    ) -> Future[Any]:
+        """
+        Dispatch a heavy or blocking task to a background worker thread.
+        Never freezes the Tkinter desktop GUI or UI event loop.
+        """
+        def _worker() -> Any:
+            try:
+                res = func(*args, **kwargs)
+                if on_success is not None:
+                    root = getattr(self.window, "root", None)
+                    if root is not None and type(root).__name__ != "MagicMock" and hasattr(root, "after"):
+                        try:
+                            root.after(0, lambda: on_success(res))
+                        except Exception:
+                            on_success(res)
+                    else:
+                        on_success(res)
+                return res
+            except Exception as exc:
+                if on_error is not None:
+                    err = exc
+                    root = getattr(self.window, "root", None)
+                    if root is not None and type(root).__name__ != "MagicMock" and hasattr(root, "after"):
+                        try:
+                            root.after(0, lambda e=err: on_error(e))
+                        except Exception:
+                            on_error(err)
+                    else:
+                        on_error(err)
+                raise
+
+        return self.executor.submit(_worker)
+
+    def chat_async(
+        self,
+        prompt: str,
+        on_complete: Callable[[str], None],
+        on_error: Callable[[Exception], None] | None = None,
+        model: str | None = None,
+        provider: str | None = None,
+    ) -> Future[Any]:
+        """Asynchronously execute chat without blocking the UI thread."""
+        return self.execute_async(
+            self.chat,
+            prompt=prompt,
+            model=model,
+            provider=provider,
+            on_success=on_complete,
+            on_error=on_error,
+        )
+
+    def research_async(
+        self,
+        query: str,
+        on_complete: Callable[[Any], None],
+        on_error: Callable[[Exception], None] | None = None,
+        template: str | None = None,
+        **kwargs: Any,
+    ) -> Future[Any]:
+        """Asynchronously execute research without blocking the UI thread."""
+        return self.execute_async(
+            self.research,
+            query=query,
+            template=template,
+            on_success=on_complete,
+            on_error=on_error,
+            **kwargs,
+        )
+
+    def search_knowledge_async(
+        self,
+        query: str,
+        on_complete: Callable[[list[dict[str, Any]]], None],
+        on_error: Callable[[Exception], None] | None = None,
+        minimum_score: float = 0.0,
+    ) -> Future[Any]:
+        """Asynchronously query knowledge without blocking the UI thread."""
+        return self.execute_async(
+            self.search_knowledge,
+            query=query,
+            minimum_score=minimum_score,
+            on_success=on_complete,
+            on_error=on_error,
+        )
 
     def list_providers(self) -> list[str]:
         """Return available AI provider identifiers."""

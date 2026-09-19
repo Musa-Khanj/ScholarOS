@@ -18,7 +18,7 @@ from scholaros.retrieval.result import RetrievalResult
 from scholaros.retrieval.retriever import BaseRetriever, Retriever
 
 if TYPE_CHECKING:
-    pass
+    from scholaros.retrieval.cache import RetrievalCache
 
 
 class RetrievalPipeline:
@@ -34,12 +34,14 @@ class RetrievalPipeline:
         ranker: BaseReranker | RetrievalRanker | ScoreReranker | None = None,
         reranker: BaseReranker | None = None,
         context_builder: ContextBuilder | None = None,
+        cache: RetrievalCache | None = None,
     ) -> None:
         self._retriever = retriever
         self._filter = retrieval_filter or RetrievalFilter()
         self._ranker = ranker or RetrievalRanker()
         self._reranker = reranker
         self._context_builder = context_builder or ContextBuilder()
+        self._cache = cache
 
     @property
     def retriever(self) -> BaseRetriever | Retriever:
@@ -66,6 +68,15 @@ class RetrievalPipeline:
         """Return the context builder."""
         return self._context_builder
 
+    @property
+    def cache(self) -> RetrievalCache | None:
+        """Return the query cache, if configured."""
+        return self._cache
+
+    @cache.setter
+    def cache(self, value: RetrievalCache | None) -> None:
+        self._cache = value
+
     def run(
         self,
         query: str,
@@ -86,8 +97,16 @@ class RetrievalPipeline:
         """
         Execute the full multi-stage retrieval pipeline:
         Retrieve -> Filter -> Rank -> Optional Rerank -> Optional Context.
+        Supports caching for sub-millisecond repeated queries.
         """
         q = query if isinstance(query, RetrievalQuery) else RetrievalQuery(text=query)
+
+        cache_key: str | None = None
+        if self._cache is not None:
+            cache_key = self._cache.make_key(q, build_context=build_context)
+            cached = self._cache.get(cache_key)
+            if cached is not None:
+                return cached
 
         # 1. Retrieve candidates
         candidates = self._retriever.retrieve(q)
@@ -108,6 +127,9 @@ class RetrievalPipeline:
         context: RetrievalContext | None = None
         if build_context:
             context = self._context_builder.build(q.text, ranked)
+
+        if self._cache is not None and cache_key is not None:
+            self._cache.set(cache_key, ranked, context)
 
         return ranked, context
 

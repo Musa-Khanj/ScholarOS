@@ -17,6 +17,8 @@ from __future__ import annotations
 from abc import ABC
 from abc import abstractmethod
 
+from collections.abc import Sequence
+
 from scholaros.embeddings.embedding import (
     Embedding,
 )
@@ -69,6 +71,16 @@ class EmbeddingProvider(
         Generate an embedding
         from text.
         """
+
+    def embed_batch(
+        self,
+        texts: Sequence[str],
+    ) -> list[Embedding]:
+        """
+        Generate embeddings for multiple texts.
+        Providers may override this with vectorized bulk requests.
+        """
+        return [self.embed(t) for t in texts]
 
     def __repr__(
         self,

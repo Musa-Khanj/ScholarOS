@@ -17,7 +17,11 @@ import sys
 from typing import Sequence, TextIO
 
 from scholaros.cli.commands import (
+    run_config,
+    run_gui,
     run_info,
+    run_init,
+    run_research,
     run_status,
 )
 from scholaros.cli.parser import (
@@ -53,13 +57,26 @@ def main(
     )
 
     if args.command == "info":
-        return run_info(
-            output,
-        )
+        return run_info(output)
 
     if args.command == "status":
-        return run_status(
+        return run_status(output)
+
+    if args.command == "init":
+        return run_init(output, force=getattr(args, "force", False))
+
+    if args.command == "gui":
+        return run_gui(output)
+
+    if args.command == "config":
+        return run_config(output)
+
+    if args.command == "run":
+        return run_research(
             output,
+            query=args.query,
+            provider=getattr(args, "provider", None),
+            model=getattr(args, "model", None),
         )
 
     parser.print_help(

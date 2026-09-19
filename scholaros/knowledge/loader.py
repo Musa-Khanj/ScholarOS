@@ -8,7 +8,7 @@ Load -> Parse -> Normalize -> Chunk -> Store -> Index.
 from __future__ import annotations
 
 import time
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -203,28 +203,55 @@ class KnowledgeLoader:
         chunk_size: int = 500,
         chunk_overlap: int = 50,
         duplicate_policy: DuplicatePolicy | str = DuplicatePolicy.REPLACE,
+        max_workers: int = 1,
     ) -> BatchIngestionResult:
         """
         Batch ingest documents with individual failure recovery.
         A failure on one file does not interrupt the rest of the batch.
+        Supports parallel worker threads for high-throughput multi-file batches.
         """
         start_time = time.perf_counter()
         batch_res = BatchIngestionResult(total_files=len(file_paths))
 
-        for f_path in file_paths:
-            res = self.ingest_file(
-                file_path=f_path,
-                collection_name=collection_name,
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
-                duplicate_policy=duplicate_policy,
-            )
-            batch_res.results.append(res)
-            if res.is_success and res.document is not None:
-                batch_res.succeeded.append(res.document)
-            else:
-                batch_res.failed.append(str(f_path))
-                batch_res.errors[str(f_path)] = res.error or "Unknown ingestion error"
+        if not file_paths:
+            batch_res.duration_ms = 0.0
+            return batch_res
+
+        if max_workers > 1 and len(file_paths) > 1:
+            from concurrent.futures import ThreadPoolExecutor
+
+            def _process_file(p: str | Path) -> tuple[str, IngestionResult]:
+                return str(p), self.ingest_file(
+                    file_path=p,
+                    collection_name=collection_name,
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    duplicate_policy=duplicate_policy,
+                )
+
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                for path_str, res in executor.map(_process_file, file_paths):
+                    batch_res.results.append(res)
+                    if res.is_success and res.document is not None:
+                        batch_res.succeeded.append(res.document)
+                    else:
+                        batch_res.failed.append(path_str)
+                        batch_res.errors[path_str] = res.error or "Unknown ingestion error"
+        else:
+            for f_path in file_paths:
+                res = self.ingest_file(
+                    file_path=f_path,
+                    collection_name=collection_name,
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    duplicate_policy=duplicate_policy,
+                )
+                batch_res.results.append(res)
+                if res.is_success and res.document is not None:
+                    batch_res.succeeded.append(res.document)
+                else:
+                    batch_res.failed.append(str(f_path))
+                    batch_res.errors[str(f_path)] = res.error or "Unknown ingestion error"
 
         batch_res.duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
         return batch_res
@@ -303,7 +330,7 @@ class KnowledgeLoader:
         return document
 
     @classmethod
-    def chunk_text(
+    def chunk_text_stream(
         cls,
         text_or_doc_id: str = "",
         text_or_chunk_size: str | int = 500,
@@ -311,13 +338,10 @@ class KnowledgeLoader:
         chunk_overlap: int = 50,
         document_id: str | None = None,
         text: str | None = None,
-    ) -> list[Chunk]:
+    ) -> Iterator[Chunk]:
         """
-        Split text into overlapping chunks with character offsets.
-        Accepts:
-        - chunk_text(document_id, text, chunk_size, chunk_overlap)
-        - chunk_text(text, chunk_size, chunk_overlap)
-        - chunk_text(document_id=..., text=..., chunk_size=..., chunk_overlap=...)
+        Lazily yield overlapping chunks with character offsets.
+        Avoids accumulating giant chunk lists in memory for large texts/dissertations.
         """
         if text is not None:
             actual_text = text
@@ -336,9 +360,8 @@ class KnowledgeLoader:
             c_overlap = chunk_size if chunk_size != 500 else chunk_overlap
 
         if not actual_text:
-            return []
+            return
 
-        chunks: list[Chunk] = []
         start = 0
         text_len = len(actual_text)
         index = 0
@@ -355,15 +378,13 @@ class KnowledgeLoader:
             chunk_content = actual_text[start:end].strip()
             if chunk_content:
                 chunk_id = f"{actual_doc_id}_chunk_{index}"
-                chunks.append(
-                    Chunk(
-                        identifier=chunk_id,
-                        document_id=actual_doc_id,
-                        content=chunk_content,
-                        index=index,
-                        start_char=start,
-                        end_char=end,
-                    )
+                yield Chunk(
+                    identifier=chunk_id,
+                    document_id=actual_doc_id,
+                    content=chunk_content,
+                    index=index,
+                    start_char=start,
+                    end_char=end,
                 )
                 index += 1
 
@@ -372,7 +393,33 @@ class KnowledgeLoader:
 
             start = max(start + 1, end - c_overlap)
 
-        return chunks
+    @classmethod
+    def chunk_text(
+        cls,
+        text_or_doc_id: str = "",
+        text_or_chunk_size: str | int = 500,
+        chunk_size: int = 500,
+        chunk_overlap: int = 50,
+        document_id: str | None = None,
+        text: str | None = None,
+    ) -> list[Chunk]:
+        """
+        Split text into overlapping chunks with character offsets.
+        Accepts:
+        - chunk_text(document_id, text, chunk_size, chunk_overlap)
+        - chunk_text(text, chunk_size, chunk_overlap)
+        - chunk_text(document_id=..., text=..., chunk_size=..., chunk_overlap=...)
+        """
+        return list(
+            cls.chunk_text_stream(
+                text_or_doc_id=text_or_doc_id,
+                text_or_chunk_size=text_or_chunk_size,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                document_id=document_id,
+                text=text,
+            )
+        )
 
     def __len__(self) -> int:
         """Return the number of loaded knowledge collections."""

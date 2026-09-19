@@ -47,6 +47,25 @@ class Embedding:
             metadata or {},
         )
 
+        self._norm: float | None = None
+        self._inv_norm: float | None = None
+
+    @property
+    def norm(self) -> float:
+        """Return the precomputed Euclidean (L2) norm of the vector."""
+        if self._norm is None:
+            from math import sqrt
+            self._norm = sqrt(sum(v * v for v in self._vector))
+            self._inv_norm = (1.0 / self._norm) if self._norm > 0 else 0.0
+        return self._norm
+
+    @property
+    def inv_norm(self) -> float:
+        """Return the reciprocal (1.0 / norm) for high-speed dot-product scaling."""
+        if self._inv_norm is None:
+            _ = self.norm
+        return self._inv_norm or 0.0
+
     @property
     def text(
         self,

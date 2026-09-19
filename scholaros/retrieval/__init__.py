@@ -7,6 +7,7 @@ reranking, scoring algorithms, and context construction for ScholarOS.
 
 from __future__ import annotations
 
+from scholaros.retrieval.cache import CachedRetrievalItem, RetrievalCache
 from scholaros.retrieval.collection import RetrievalCollection
 from scholaros.retrieval.configuration import RetrievalConfiguration
 from scholaros.retrieval.context import (
@@ -90,6 +91,8 @@ __all__ = [
     "RetrievalFilter",
     "RetrievalRanker",
     "RetrievalPipeline",
+    "CachedRetrievalItem",
+    "RetrievalCache",
     # Query & Context
     "RetrievalQuery",
     "RetrievalContext",

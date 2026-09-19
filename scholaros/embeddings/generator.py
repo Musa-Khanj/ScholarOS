@@ -15,6 +15,8 @@ provider.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from scholaros.embeddings.embedding import (
     Embedding,
 )
@@ -64,6 +66,27 @@ class EmbeddingGenerator:
         return self._provider.embed(
             text,
         )
+
+    def generate_batch(
+        self,
+        texts: Sequence[str],
+        batch_size: int = 32,
+    ) -> list[Embedding]:
+        """
+        Generate embeddings for multiple texts in configurable batches.
+        """
+        if not texts:
+            return []
+
+        results: list[Embedding] = []
+        batch_size = max(1, batch_size)
+        for i in range(0, len(texts), batch_size):
+            chunk = texts[i : i + batch_size]
+            if hasattr(self._provider, "embed_batch"):
+                results.extend(self._provider.embed_batch(chunk))
+            else:
+                results.extend(self._provider.embed(t) for t in chunk)
+        return results
 
     def __repr__(
         self,

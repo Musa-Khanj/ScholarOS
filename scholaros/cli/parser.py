@@ -59,6 +59,60 @@ def build_parser() -> argparse.ArgumentParser:
         handler="status",
     )
 
+    init_parser = subparsers.add_parser(
+        "init",
+        help="Initialize user configuration and data directories.",
+    )
+    init_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing configuration file if present.",
+    )
+    init_parser.set_defaults(
+        handler="init",
+    )
+
+    gui_parser = subparsers.add_parser(
+        "gui",
+        help="Launch the ScholarOS desktop GUI application.",
+    )
+    gui_parser.set_defaults(
+        handler="gui",
+    )
+
+    config_parser = subparsers.add_parser(
+        "config",
+        help="Display platform directory paths and configuration status.",
+    )
+    config_parser.set_defaults(
+        handler="config",
+    )
+
+    run_parser = subparsers.add_parser(
+        "run",
+        help="Execute an AI research query directly from the terminal.",
+    )
+    run_parser.add_argument(
+        "query",
+        type=str,
+        help="Research query prompt.",
+    )
+    run_parser.add_argument(
+        "--provider",
+        type=str,
+        default=None,
+        help="AI provider override.",
+    )
+    run_parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="Model name override.",
+    )
+    run_parser.set_defaults(
+        handler="run",
+    )
+
     return parser
 
 
