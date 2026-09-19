@@ -8,13 +8,13 @@ from scholaros.logging.handlers import file_handler
 
 
 class LogManager:
-    def __init__(self, log_dir: Path = Path("logs")) -> None:
+    def __init__(self, log_dir: Path = Path("logs"), json_format: bool = False) -> None:
         self._logger = logging.getLogger("ScholarOS")
         self._logger.setLevel(logging.INFO)
 
         if not self._logger.handlers:
-            self._logger.addHandler(console_handler())
-            self._logger.addHandler(file_handler(log_dir))
+            self._logger.addHandler(console_handler(json_format=json_format))
+            self._logger.addHandler(file_handler(log_dir, json_format=json_format))
 
     @property
     def logger(self) -> logging.Logger:

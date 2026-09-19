@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from queue import Empty
 import threading
 
 from scholaros.scheduler.queue import TaskQueue
@@ -14,7 +13,10 @@ class Worker(threading.Thread):
 
     def run(self):
         while self.running:
-            task = self.queue.get()
+            try:
+                task = self.queue.get(timeout=0.1)
+            except Empty:
+                continue
             task.func(*task.args, **task.kwargs)
 
     def stop(self):

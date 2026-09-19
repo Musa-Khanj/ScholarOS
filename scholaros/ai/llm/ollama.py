@@ -34,15 +34,23 @@ class OllamaLLM(LLM):
 
     def generate(
         self,
-        messages: list[Message],
+        messages: list[Message] | str,
     ) -> LLMResponse:
+
+        if isinstance(messages, str):
+            messages = [
+                Message(
+                    role=MessageRole.USER,
+                    content=messages,
+                )
+            ]
 
         response = self._client.invoke(
             self._convert(messages)
         )
 
         return LLMResponse(
-            content=response.content,
+            content=str(response.content),
             model=self._model,
         )
 
@@ -56,7 +64,7 @@ class OllamaLLM(LLM):
         messages: list[Message],
     ):
 
-        converted = []
+        converted: list[SystemMessage | HumanMessage | AIMessage] = []
 
         for message in messages:
 

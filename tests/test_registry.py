@@ -1,6 +1,5 @@
-from scholaros.core.base import Component
-from scholaros.core.base import ComponentMetadata
-
+from scholaros.core.base import Component, ComponentMetadata
+from scholaros.core.registry import Registry
 
 class Dummy(Component):
     def initialize(self) -> None:
@@ -13,7 +12,7 @@ class Dummy(Component):
         return True
 
 
-from scholaros.core.registry import Registry
+
 
 
 def test_registry():

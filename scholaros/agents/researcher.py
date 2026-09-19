@@ -13,9 +13,18 @@ responsible for executing research tasks.
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from scholaros.agents.base import BaseAgent
 from scholaros.research.pipeline import ResearchPipeline
 
-from scholaros.agents import BaseAgent
+if TYPE_CHECKING:
+    from scholaros.knowledge.rag.pipeline import RAGPipeline
+    from scholaros.knowledge.rag.service import RAGService
+    from scholaros.research.result import ResearchResult
+    from scholaros.research.session import ResearchSession
+
 
 
 class ResearchAgent(BaseAgent):
@@ -33,6 +42,11 @@ class ResearchAgent(BaseAgent):
         """
 
         self._pipeline = pipeline
+
+    @classmethod
+    def from_rag(cls, rag: RAGService | RAGPipeline) -> ResearchAgent:
+        """Create a ResearchAgent configured with RAG."""
+        return cls(pipeline=ResearchPipeline.from_rag(rag))
 
     @property
     def name(
@@ -78,15 +92,52 @@ class ResearchAgent(BaseAgent):
         """
 
         return self._pipeline
-    
+
+    def research(
+        self,
+        query: str,
+        session: ResearchSession | None = None,
+        **kwargs: Any,
+    ) -> ResearchResult:
+        """
+        Execute grounded research for a query through the RAG-enabled pipeline.
+        """
+        return self._pipeline.execute_rag(query, session=session, **kwargs)
+
+    def run_workflow(
+        self,
+        query: str,
+        session: ResearchSession | None = None,
+        **kwargs: Any,
+    ) -> ResearchResult:
+        """
+        Execute a full multi-stage research workflow.
+        """
+        return self._pipeline.execute_workflow(query, session=session, **kwargs)
+
+
+
     def execute(
         self,
+        task: str | None = None,
+        **kwargs: Any,
     ) -> object:
         """
         Execute the research task.
         """
 
-        raise NotImplementedError
+        if task is None:
+            if "query" in kwargs and isinstance(kwargs["query"], str):
+                q = kwargs.pop("query")
+                return self.research(q, **kwargs)
+            raise NotImplementedError(
+                "ResearchAgent.execute requires a task or template name."
+            )
+
+        return self._pipeline.execute(
+            task,
+            **kwargs,
+        )
 
     def __repr__(
         self,
@@ -102,3 +153,8 @@ class ResearchAgent(BaseAgent):
             f"version={self.version!r}"
             f")"
         )
+
+
+__all__ = [
+    "ResearchAgent",
+]

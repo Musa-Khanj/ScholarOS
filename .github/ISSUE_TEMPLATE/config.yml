@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: ScholarOS Documentation
+    url: https://github.com/Musa-Khanj/ScholarOS#readme
+    about: Read our comprehensive user guides, architecture specs, and FAQs.
+  - name: Security Vulnerability Reporting
+    url: https://github.com/Musa-Khanj/ScholarOS/security/advisories/new
+    about: Privately disclose security-sensitive vulnerabilities.
+  - name: GitHub Discussions
+    url: https://github.com/Musa-Khanj/ScholarOS/discussions
+    about: Ask questions, share workflows, and discuss scientific use cases with the community.

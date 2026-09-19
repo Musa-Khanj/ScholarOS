@@ -20,7 +20,11 @@ Responsibilities
 
 from __future__ import annotations
 
-from scholaros.agents import BaseAgent
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scholaros.agents.base import BaseAgent
+
 
 
 class Workflow:

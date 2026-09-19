@@ -17,13 +17,19 @@ Responsibilities
 • Own Execution
 • Own Workflow
 • Own Memory
+• Own PluginManager
+• Own ToolManager
+• Own ApplicationManager
 """
 
 from __future__ import annotations
 
+from scholaros.applications.manager import ApplicationManager
 from scholaros.execution import Execution
 from scholaros.memory import Memory
 from scholaros.planner import Planner
+from scholaros.plugins.manager import PluginManager
+from scholaros.tools.manager import ToolManager
 from scholaros.workflow import Workflow
 
 
@@ -38,6 +44,9 @@ class Runtime:
         execution: Execution,
         workflow: Workflow,
         memory: Memory,
+        plugins: PluginManager,
+        tools: ToolManager,
+        applications: ApplicationManager,
     ) -> None:
         """
         Initialize the runtime.
@@ -47,6 +56,9 @@ class Runtime:
         self._execution = execution
         self._workflow = workflow
         self._memory = memory
+        self._plugins = plugins
+        self._tools = tools
+        self._applications = applications
 
     @property
     def planner(
@@ -90,6 +102,39 @@ class Runtime:
 
         return self._memory
 
+    @property
+    def plugins(
+        self,
+    ) -> PluginManager:
+        """
+        Return the configured plugin
+        manager.
+        """
+
+        return self._plugins
+
+    @property
+    def tools(
+        self,
+    ) -> ToolManager:
+        """
+        Return the configured tool
+        manager.
+        """
+
+        return self._tools
+
+    @property
+    def applications(
+        self,
+    ) -> ApplicationManager:
+        """
+        Return the configured application
+        manager.
+        """
+
+        return self._applications
+
     def run(
         self,
     ) -> object:
@@ -98,7 +143,7 @@ class Runtime:
         """
 
         return self._planner.plan()
-    
+
     def __repr__(
         self,
     ) -> str:
@@ -112,6 +157,9 @@ class Runtime:
             f"planner={self.planner.__class__.__name__}, "
             f"execution={self.execution.__class__.__name__}, "
             f"workflow={self.workflow.__class__.__name__}, "
-            f"memory={self.memory.__class__.__name__}"
+            f"memory={self.memory.__class__.__name__}, "
+            f"plugins={self.plugins.__class__.__name__}, "
+            f"tools={self.tools.__class__.__name__}, "
+            f"applications={self.applications.__class__.__name__}"
             f")"
         )

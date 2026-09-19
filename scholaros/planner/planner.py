@@ -35,7 +35,7 @@ class Planner:
         Initialize the planner.
         """
 
-        self._execution = execution   
+        self._execution = execution
 
     @property
     def execution(

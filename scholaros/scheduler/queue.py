@@ -13,8 +13,8 @@ class TaskQueue:
     def put(self, task: Task):
         self._queue.put(task)
 
-    def get(self) -> Task:
-        return self._queue.get()
+    def get(self, block: bool = True, timeout: float | None = None) -> Task:
+        return self._queue.get(block=block, timeout=timeout)
 
     def empty(self) -> bool:
         return self._queue.empty()

@@ -99,4 +99,3 @@ class PromptBuilder:
             f"(templates={len(self._registry)})"
         )
 
-    
