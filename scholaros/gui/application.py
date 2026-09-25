@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from scholaros.config.settings import Settings
     from scholaros.container.container import Container
     from scholaros.events.bus import EventBus
+    from scholaros.knowledge.manager import KnowledgeManager
     from scholaros.knowledge.rag.pipeline import RAGPipeline
     from scholaros.observability.trace import RAGTrace
     from scholaros.plugins.manager import PluginManager
@@ -58,6 +59,7 @@ class GUIApplication:
         research_pipeline: ResearchPipeline | None = None,
         rag_pipeline: RAGPipeline | None = None,
         plugin_manager: PluginManager | None = None,
+        knowledge_manager: KnowledgeManager | None = None,
         container: Container | None = None,
         event_bus: EventBus | None = None,
         config: Any | None = None,
@@ -70,6 +72,7 @@ class GUIApplication:
         self._research_pipeline = research_pipeline
         self._rag_pipeline = rag_pipeline
         self._plugin_manager = plugin_manager
+        self._knowledge_manager = knowledge_manager
         self._container = container
         self._event_bus = event_bus
         self._config = config
@@ -77,8 +80,11 @@ class GUIApplication:
         self._max_workers = max_workers
         self._executor: ThreadPoolExecutor | None = None
         self._state = ApplicationState.INITIALIZED
+        self._session: Any | None = None
+        self._memory: Any | None = None
+        self._last_citations: list[Any] = []
 
-        # Inspect services bundle if supplied
+        # 1. Inspect services bundle if supplied
         if services is not None:
             if self._ai_manager is None:
                 self._ai_manager = getattr(services, "ai_manager", None)
@@ -88,6 +94,8 @@ class GUIApplication:
                 self._rag_pipeline = getattr(services, "rag_pipeline", None)
             if self._plugin_manager is None:
                 self._plugin_manager = getattr(services, "plugin_manager", None)
+            if self._knowledge_manager is None:
+                self._knowledge_manager = getattr(services, "knowledge_manager", None)
             if self._container is None:
                 self._container = getattr(services, "container", None)
             if self._event_bus is None:
@@ -97,9 +105,61 @@ class GUIApplication:
             if self._config_manager is None:
                 self._config_manager = getattr(services, "config_manager", None)
 
+        # 2. Inspect DI Container if supplied
+        cnt = self._container
+        if cnt is not None:
+
+            def _resolve(svc_type: type) -> Any:
+                if hasattr(cnt, "resolve_optional"):
+                    return cnt.resolve_optional(svc_type)
+                if hasattr(cnt, "resolve"):
+                    try:
+                        return cnt.resolve(svc_type)
+                    except Exception:
+                        return None
+                return None
+
+            if self._config_manager is None:
+                from scholaros.config.manager import ConfigManager
+
+                self._config_manager = _resolve(ConfigManager)
+            if self._event_bus is None:
+                from scholaros.events.bus import EventBus
+
+                self._event_bus = _resolve(EventBus)
+            if self._ai_manager is None:
+                from scholaros.ai.manager import AIManager
+
+                self._ai_manager = _resolve(AIManager)
+            if self._knowledge_manager is None:
+                from scholaros.knowledge.manager import KnowledgeManager
+
+                self._knowledge_manager = _resolve(KnowledgeManager)
+            if self._research_pipeline is None:
+                from scholaros.research.pipeline import ResearchPipeline
+
+                self._research_pipeline = _resolve(ResearchPipeline)
+            if self._rag_pipeline is None:
+                from scholaros.knowledge.rag.pipeline import RAGPipeline
+
+                self._rag_pipeline = _resolve(RAGPipeline)
+            if self._plugin_manager is None:
+                from scholaros.plugins.manager import PluginManager
+
+                self._plugin_manager = _resolve(PluginManager)
+
         if self._config_manager is None and self._config is not None:
             if hasattr(self._config, "load_config") or hasattr(self._config, "to_settings"):
                 self._config_manager = self._config
+
+        # 3. Context injection into window
+        if hasattr(self._window, "set_application"):
+            self._window.set_application(self)
+        elif hasattr(self._window, "application"):
+            try:
+                setattr(self._window, "application", self)
+            except Exception:
+                pass
 
     # -----------------------------------------------------------------------
     # Properties
@@ -134,6 +194,10 @@ class GUIApplication:
         return self._plugin_manager
 
     @property
+    def knowledge_manager(self) -> KnowledgeManager | None:
+        return self._knowledge_manager
+
+    @property
     def container(self) -> Container | None:
         return self._container
 
@@ -162,6 +226,49 @@ class GUIApplication:
     @property
     def is_running(self) -> bool:
         return self._state == ApplicationState.RUNNING
+
+    @property
+    def session(self) -> Any | None:
+        """Return the active AI session, initializing one if an AI manager is available."""
+        if self._session is None and self.ai_manager is not None:
+            try:
+                from scholaros.ai.session import AISession
+
+                default_model = None
+                if self._config is not None and hasattr(self._config, "models"):
+                    default_model = getattr(self._config.models, "default_chat_model", None)
+
+                self._session = AISession(
+                    manager=self.ai_manager,
+                    model=default_model,
+                )
+            except Exception:
+                pass
+        return self._session
+
+    @property
+    def conversation(self) -> Any | None:
+        """Return the active conversation object from the session if available."""
+        if self.session is not None and hasattr(self.session, "conversation"):
+            return self.session.conversation
+        return None
+
+    @property
+    def memory(self) -> Any:
+        """Return runtime working memory."""
+        if self._memory is None:
+            try:
+                from scholaros.memory.memory import Memory
+
+                self._memory = Memory()
+            except Exception:
+                pass
+        return self._memory
+
+    @property
+    def last_citations(self) -> list[Any]:
+        """Return citations from the most recent chat or research turn."""
+        return getattr(self, "_last_citations", [])
 
     # -----------------------------------------------------------------------
     # Lifecycle
@@ -195,13 +302,23 @@ class GUIApplication:
         if self.ai_manager is not None:
             active_provider = getattr(self.ai_manager, "default_provider", None)
 
+        active_model = None
+        if self._config is not None and hasattr(self._config, "models"):
+            active_model = getattr(self._config.models, "default_chat_model", None)
+        elif self._config_manager is not None and hasattr(self._config_manager, "config"):
+            cfg = getattr(self._config_manager, "config", None)
+            if cfg is not None and hasattr(cfg, "models"):
+                active_model = getattr(cfg.models, "default_chat_model", None)
+
         return {
             "status": self.status(),
             "ai": self.ai_manager is not None,
             "research": self.research_pipeline is not None,
             "rag": self.rag_pipeline is not None,
             "plugins": self.plugin_manager is not None,
+            "knowledge": self.knowledge_manager is not None,
             "active_provider": active_provider,
+            "active_model": active_model,
         }
 
     # -----------------------------------------------------------------------
@@ -237,10 +354,18 @@ class GUIApplication:
     ) -> str:
         """
         Execute an AI chat turn, delegating to AIManager or RAGPipeline.
+        Maintains conversational history in the active session.
         """
         cleaned_prompt = prompt.strip()
         if not cleaned_prompt:
             raise ValueError("Chat prompt cannot be empty.")
+
+        # Record user turn in active conversation session
+        if self.conversation is not None and hasattr(self.conversation, "add_user"):
+            try:
+                self.conversation.add_user(cleaned_prompt)
+            except Exception:
+                pass
 
         # 1. Prefer AIManager
         if self.ai_manager is not None:
@@ -250,8 +375,22 @@ class GUIApplication:
                 model=model,
                 requested_provider=provider,
             )
-            request = AIRequest(prompt=cleaned_prompt, model=model)
+            messages = list(self.conversation.messages) if self.conversation is not None else []
+            request = AIRequest(prompt=cleaned_prompt, messages=messages, model=model)
             response = ai_provider.generate(request)
+
+            if self.conversation is not None and hasattr(self.conversation, "add_assistant"):
+                try:
+                    self.conversation.add_assistant(response.content)
+                except Exception:
+                    pass
+
+            raw_meta = getattr(response, "metadata", None)
+            if isinstance(raw_meta, dict):
+                cites = raw_meta.get("citations", [])
+                self._last_citations = list(cites) if isinstance(cites, (list, tuple)) else []
+            else:
+                self._last_citations = []
             return response.content
 
         # 2. Fallback to RAGPipeline
@@ -260,14 +399,41 @@ class GUIApplication:
 
             rag_req = RAGRequest(query=cleaned_prompt)
             rag_res = self.rag_pipeline.run(rag_req)
+
+            if self.conversation is not None and hasattr(self.conversation, "add_assistant"):
+                try:
+                    self.conversation.add_assistant(rag_res.content)
+                except Exception:
+                    pass
+
+            raw_sources = getattr(rag_res, "sources", None)
+            if isinstance(raw_sources, (list, tuple)):
+                self._last_citations = list(raw_sources)
+            else:
+                self._last_citations = []
             return rag_res.content
 
         raise RuntimeError("No AI provider or RAG pipeline is configured.")
+
+    def clear_chat(self) -> None:
+        """Reset conversation history in active session."""
+        if self._session is not None and hasattr(self._session, "reset"):
+            try:
+                self._session.reset()
+            except Exception:
+                pass
+        elif self.conversation is not None and hasattr(self.conversation, "clear"):
+            try:
+                self.conversation.clear()
+            except Exception:
+                pass
+        self._last_citations = []
 
     def research(
         self,
         query: str,
         template: str | None = None,
+        use_workflow: bool = False,
         **kwargs: Any,
     ) -> Any:
         """
@@ -280,9 +446,19 @@ class GUIApplication:
         if self.research_pipeline is not None:
             if template:
                 return self.research_pipeline.execute(template, query=cleaned_query, **kwargs)
+            if use_workflow:
+                kwargs["use_workflow"] = True
             return self.research_pipeline.execute(cleaned_query, **kwargs)
 
         raise RuntimeError("Research pipeline is not configured.")
+
+    def cancel_research(self, reason: str = "User requested cancellation") -> bool:
+        """Signal cancellation for the actively executing research workflow."""
+        if self.research_pipeline is not None and hasattr(
+            self.research_pipeline, "cancel_active_workflow"
+        ):
+            return self.research_pipeline.cancel_active_workflow(reason)
+        return False
 
     def search_knowledge(
         self,
@@ -290,7 +466,7 @@ class GUIApplication:
         minimum_score: float = 0.0,
     ) -> list[dict[str, Any]]:
         """
-        Query knowledge repository via RAGPipeline and return structured source items.
+        Query knowledge repository via RAGPipeline or KnowledgeManager and return structured source items.
         """
         cleaned_query = query.strip()
         if not cleaned_query:
@@ -304,15 +480,188 @@ class GUIApplication:
 
             results: list[dict[str, Any]] = []
             for item in res.sources:
-                results.append({
-                    "content": getattr(item, "content", str(item)),
-                    "score": getattr(item, "score", 1.0),
-                    "source": getattr(item, "source", "unknown"),
-                    "metadata": getattr(item, "metadata", {}),
-                })
+                results.append(
+                    {
+                        "content": getattr(item, "content", str(item)),
+                        "score": getattr(item, "score", 1.0),
+                        "source": getattr(item, "source", "unknown"),
+                        "metadata": getattr(item, "metadata", {}),
+                    }
+                )
             return results
 
+        if self.knowledge_manager is not None:
+            res_km = self.knowledge_manager.search(cleaned_query)
+            km_results: list[dict[str, Any]] = []
+            for km_item in res_km.results:
+                score = getattr(km_item, "score", 1.0)
+                if score >= minimum_score:
+                    km_results.append(
+                        {
+                            "content": getattr(km_item, "content", ""),
+                            "score": score,
+                            "source": getattr(km_item, "document_id", "doc"),
+                            "metadata": getattr(km_item, "metadata", {}),
+                        }
+                    )
+            return km_results
+
         raise RuntimeError("RAG pipeline is not configured.")
+
+    def list_documents(self, collection_name: str | None = None) -> list[dict[str, Any]]:
+        """Return list of indexed documents from KnowledgeManager."""
+        if self.knowledge_manager is not None:
+            docs: list[dict[str, Any]] = []
+            colls = (
+                [collection_name]
+                if collection_name
+                else (list(self.knowledge_manager.names()) or ["default"])
+            )
+            for col in colls:
+                for doc in self.knowledge_manager.storage.list_documents(col):
+                    docs.append(
+                        {
+                            "id": doc.identifier,
+                            "title": doc.title,
+                            "collection": col,
+                            "status": getattr(doc, "status", "indexed"),
+                            "chunks_count": len(doc.chunks),
+                            "content_hash": getattr(doc, "content_hash", ""),
+                            "content": doc.content,
+                            "metadata": (
+                                doc.metadata.to_dict() if hasattr(doc.metadata, "to_dict") else {}
+                            ),
+                        }
+                    )
+            return docs
+        return []
+
+    def get_document(
+        self,
+        document_id: str,
+        collection_name: str = "default",
+    ) -> dict[str, Any] | None:
+        """Retrieve full document details by ID."""
+        if self.knowledge_manager is not None:
+            doc = self.knowledge_manager.storage.get_document(
+                document_id, collection_name=collection_name
+            )
+            target_col = collection_name
+            if doc is None:
+                for col in self.knowledge_manager.names():
+                    doc = self.knowledge_manager.storage.get_document(
+                        document_id, collection_name=col
+                    )
+                    if doc is not None:
+                        target_col = col
+                        break
+            if doc is not None:
+                return {
+                    "id": doc.identifier,
+                    "title": doc.title,
+                    "collection": target_col,
+                    "status": getattr(doc, "status", "indexed"),
+                    "chunks_count": len(doc.chunks),
+                    "content_hash": getattr(doc, "content_hash", ""),
+                    "content": doc.content,
+                    "metadata": (
+                        doc.metadata.to_dict() if hasattr(doc.metadata, "to_dict") else {}
+                    ),
+                    "chunks": [
+                        c.to_dict() if hasattr(c, "to_dict") else str(c) for c in doc.chunks
+                    ],
+                }
+        return None
+
+    def add_document(
+        self,
+        document_or_path: Any,
+        title: str | None = None,
+        content: str | None = None,
+        collection_name: str = "default",
+        duplicate_policy: str = "replace",
+    ) -> dict[str, Any]:
+        """Ingest or register a document into the Knowledge subsystem."""
+        if self.knowledge_manager is None:
+            raise RuntimeError("Knowledge manager is not configured.")
+
+        # Path ingestion check
+        is_path = False
+        try:
+            from pathlib import Path
+
+            p = Path(document_or_path)
+            if p.is_file():
+                is_path = True
+        except Exception:
+            is_path = False
+
+        if is_path:
+            from pathlib import Path
+            from scholaros.knowledge.loader import KnowledgeLoader
+
+            loader = KnowledgeLoader(manager=self.knowledge_manager)
+            res = loader.ingest_file(
+                file_path=Path(document_or_path),
+                collection_name=collection_name,
+                duplicate_policy=duplicate_policy,
+            )
+            if res.document is None:
+                raise RuntimeError(res.error or f"Failed to ingest file '{document_or_path}'.")
+            doc = res.document
+        elif hasattr(document_or_path, "identifier") and hasattr(document_or_path, "content"):
+            doc = self.knowledge_manager.add_document(
+                document=document_or_path,
+                collection_name=collection_name,
+                duplicate_policy=duplicate_policy,
+            )
+        else:
+            from scholaros.knowledge.document import KnowledgeDocument
+
+            raw_text = content if content is not None else str(document_or_path)
+            doc_id = str(title or f"doc_{abs(hash(raw_text)) % 100000}")
+            doc_title = str(title or doc_id)
+            new_doc = KnowledgeDocument(identifier=doc_id, title=doc_title, content=raw_text)
+            doc = self.knowledge_manager.add_document(
+                document=new_doc,
+                collection_name=collection_name,
+                duplicate_policy=duplicate_policy,
+            )
+
+        return {
+            "id": doc.identifier,
+            "title": doc.title,
+            "collection": collection_name,
+            "status": getattr(doc, "status", "indexed"),
+            "chunks_count": len(doc.chunks),
+            "content_hash": getattr(doc, "content_hash", ""),
+            "content": doc.content,
+            "metadata": doc.metadata.to_dict() if hasattr(doc.metadata, "to_dict") else {},
+        }
+
+    def remove_document(
+        self,
+        document_id: str,
+        collection_name: str = "default",
+    ) -> bool:
+        """Remove a document from the Knowledge subsystem."""
+        if self.knowledge_manager is None:
+            raise RuntimeError("Knowledge manager is not configured.")
+        removed = self.knowledge_manager.remove_document(
+            document_id, collection_name=collection_name
+        )
+        if not removed:
+            for col in self.knowledge_manager.names():
+                if col != collection_name:
+                    if self.knowledge_manager.remove_document(document_id, collection_name=col):
+                        return True
+        return removed
+
+    def reindex_knowledge(self) -> int:
+        """Trigger reindexing of all collections in the Knowledge subsystem."""
+        if self.knowledge_manager is None:
+            raise RuntimeError("Knowledge manager is not configured.")
+        return self.knowledge_manager.reindex_all()
 
     # -----------------------------------------------------------------------
     # Non-blocking Asynchronous Operations (GUI Responsiveness)
@@ -330,12 +679,17 @@ class GUIApplication:
         Dispatch a heavy or blocking task to a background worker thread.
         Never freezes the Tkinter desktop GUI or UI event loop.
         """
+
         def _worker() -> Any:
             try:
                 res = func(*args, **kwargs)
                 if on_success is not None:
                     root = getattr(self.window, "root", None)
-                    if root is not None and type(root).__name__ != "MagicMock" and hasattr(root, "after"):
+                    if (
+                        root is not None
+                        and type(root).__name__ != "MagicMock"
+                        and hasattr(root, "after")
+                    ):
                         try:
                             root.after(0, lambda: on_success(res))
                         except Exception:
@@ -347,7 +701,11 @@ class GUIApplication:
                 if on_error is not None:
                     err = exc
                     root = getattr(self.window, "root", None)
-                    if root is not None and type(root).__name__ != "MagicMock" and hasattr(root, "after"):
+                    if (
+                        root is not None
+                        and type(root).__name__ != "MagicMock"
+                        and hasattr(root, "after")
+                    ):
                         try:
                             root.after(0, lambda e=err: on_error(e))
                         except Exception:
@@ -361,35 +719,54 @@ class GUIApplication:
     def chat_async(
         self,
         prompt: str,
-        on_complete: Callable[[str], None],
+        on_complete: Callable[[str], None] | None = None,
         on_error: Callable[[Exception], None] | None = None,
         model: str | None = None,
         provider: str | None = None,
+        on_success: Callable[[str], None] | None = None,
     ) -> Future[Any]:
         """Asynchronously execute chat without blocking the UI thread."""
+
+        def _default_success(_: str) -> None:
+            pass
+
+        success_cb = on_complete if on_complete is not None else on_success
+        if success_cb is None:
+            success_cb = _default_success
         return self.execute_async(
             self.chat,
             prompt=prompt,
             model=model,
             provider=provider,
-            on_success=on_complete,
+            on_success=success_cb,
             on_error=on_error,
         )
 
     def research_async(
         self,
         query: str,
-        on_complete: Callable[[Any], None],
+        on_complete: Callable[[Any], None] | None = None,
         on_error: Callable[[Exception], None] | None = None,
         template: str | None = None,
+        use_workflow: bool = False,
+        on_success: Callable[[Any], None] | None = None,
         **kwargs: Any,
     ) -> Future[Any]:
         """Asynchronously execute research without blocking the UI thread."""
+
+        def _default_success(_: Any) -> None:
+            pass
+
+        success_cb = on_complete if on_complete is not None else on_success
+        if success_cb is None:
+            success_cb = _default_success
+
         return self.execute_async(
             self.research,
             query=query,
             template=template,
-            on_success=on_complete,
+            use_workflow=use_workflow,
+            on_success=success_cb,
             on_error=on_error,
             **kwargs,
         )
@@ -407,6 +784,68 @@ class GUIApplication:
             query=query,
             minimum_score=minimum_score,
             on_success=on_complete,
+            on_error=on_error,
+        )
+
+    def add_document_async(
+        self,
+        document_or_path: Any,
+        title: str | None = None,
+        content: str | None = None,
+        collection_name: str = "default",
+        duplicate_policy: str = "replace",
+        on_complete: Callable[[dict[str, Any]], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> Future[Any]:
+        """Asynchronously add or ingest a document without blocking the UI thread."""
+
+        def _default_success(_: dict[str, Any]) -> None:
+            pass
+
+        return self.execute_async(
+            self.add_document,
+            document_or_path=document_or_path,
+            title=title,
+            content=content,
+            collection_name=collection_name,
+            duplicate_policy=duplicate_policy,
+            on_success=on_complete if on_complete is not None else _default_success,
+            on_error=on_error,
+        )
+
+    def remove_document_async(
+        self,
+        document_id: str,
+        collection_name: str = "default",
+        on_complete: Callable[[bool], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> Future[Any]:
+        """Asynchronously remove a document without blocking the UI thread."""
+
+        def _default_success(_: bool) -> None:
+            pass
+
+        return self.execute_async(
+            self.remove_document,
+            document_id=document_id,
+            collection_name=collection_name,
+            on_success=on_complete if on_complete is not None else _default_success,
+            on_error=on_error,
+        )
+
+    def reindex_knowledge_async(
+        self,
+        on_complete: Callable[[int], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> Future[Any]:
+        """Asynchronously reindex all knowledge collections without blocking the UI thread."""
+
+        def _default_success(_: int) -> None:
+            pass
+
+        return self.execute_async(
+            self.reindex_knowledge,
+            on_success=on_complete if on_complete is not None else _default_success,
             on_error=on_error,
         )
 
@@ -438,13 +877,15 @@ class GUIApplication:
                 desc = getattr(p, "description", None)
                 if desc is None and hasattr(p, "metadata") and hasattr(p.metadata, "description"):
                     desc = p.metadata.description
-                results.append({
-                    "id": p.id,
-                    "name": p.name,
-                    "version": p.version,
-                    "state": self.plugin_manager.state(p.id).name,
-                    "description": desc or "",
-                })
+                results.append(
+                    {
+                        "id": p.id,
+                        "name": p.name,
+                        "version": p.version,
+                        "state": self.plugin_manager.state(p.id).name,
+                        "description": desc or "",
+                    }
+                )
             return results
         return []
 
@@ -467,6 +908,7 @@ class GUIApplication:
         if self._config_manager is not None:
             return self._config_manager.config
         from scholaros.config.manager import ConfigManager
+
         self._config_manager = ConfigManager()
         return self._config_manager.config
 
@@ -475,6 +917,7 @@ class GUIApplication:
         if self._config_manager is not None:
             return self._config_manager.settings
         from scholaros.config.manager import ConfigManager
+
         self._config_manager = ConfigManager()
         return self._config_manager.settings
 
@@ -487,6 +930,7 @@ class GUIApplication:
         """Apply dynamic configuration updates with optional persistence."""
         if self._config_manager is None:
             from scholaros.config.manager import ConfigManager
+
             self._config_manager = ConfigManager()
         return self._config_manager.update(
             updates=updates,
@@ -504,6 +948,7 @@ class GUIApplication:
         """Save configuration to disk."""
         if self._config_manager is None:
             from scholaros.config.manager import ConfigManager
+
             self._config_manager = ConfigManager()
         return self._config_manager.save(
             path=path,
@@ -562,8 +1007,4 @@ class GUIApplication:
             disable_debug_mode()
 
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}("
-            f"window={self.window!r}"
-            f")"
-        )
+        return f"{self.__class__.__name__}(window={self.window!r})"

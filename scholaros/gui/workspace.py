@@ -47,6 +47,7 @@ class GUIWorkspace:
     def __init__(
         self,
         parent: ttk.Frame,
+        application: Any | None = None,
     ) -> None:
         """
         Initialize the workspace.
@@ -56,9 +57,12 @@ class GUIWorkspace:
         parent:
             Parent widget that owns the
             workspace container.
+        application:
+            Optional GUIApplication instance.
         """
 
         self._parent = parent
+        self._application = application
 
         self._container = ttk.Frame(
             parent,
@@ -128,7 +132,6 @@ class GUIWorkspace:
     # Properties
     # ---------------------------------------------------------
 
-
     @property
     def parent(
         self,
@@ -179,9 +182,7 @@ class GUIWorkspace:
         Return registered view names.
         """
 
-        return tuple(
-            self._views.keys()
-        )
+        return tuple(self._views.keys())
 
     def current(
         self,
@@ -206,7 +207,6 @@ class GUIWorkspace:
     ) -> None:
 
         if self._active is not None:
-
             self._active.frame.pack_forget()
 
             self._active = None
@@ -238,7 +238,6 @@ class GUIWorkspace:
                 expand=True,
             )
 
-
     @property
     def active(
         self,
@@ -249,6 +248,22 @@ class GUIWorkspace:
 
         return self._active
 
+    @property
+    def application(self) -> Any | None:
+        """Return the bound GUIApplication instance if injected."""
+        return self._application
+
+    def set_application(self, application: Any) -> None:
+        """Inject GUIApplication reference and propagate to all registered views."""
+        self._application = application
+        for view in self._views.values():
+            if hasattr(view, "set_application"):
+                view.set_application(application)
+            elif hasattr(view, "application"):
+                try:
+                    setattr(view, "application", application)
+                except Exception:
+                    pass
 
     def _create_views(
         self,
@@ -258,12 +273,12 @@ class GUIWorkspace:
         """
 
         self._views = {
-            "Home": HomeView(self.container),
-            "Chat": ChatView(self.container),
-            "Research": ResearchView(self.container),
-            "Library": LibraryView(self.container),
-            "Plugins": PluginsView(self.container),
-            "Settings": SettingsView(self.container),
+            "Home": HomeView(self.container, application=self._application),
+            "Chat": ChatView(self.container, application=self._application),
+            "Research": ResearchView(self.container, application=self._application),
+            "Library": LibraryView(self.container, application=self._application),
+            "Plugins": PluginsView(self.container, application=self._application),
+            "Settings": SettingsView(self.container, application=self._application),
         }
 
     # ---------------------------------------------------------
@@ -277,8 +292,5 @@ class GUIWorkspace:
         """
 
         return (
-            f"{self.__class__.__name__}("
-            f"views={len(self._views)}, "
-            f"current={self._current_name!r}"
-            f")"
+            f"{self.__class__.__name__}(views={len(self._views)}, current={self._current_name!r})"
         )

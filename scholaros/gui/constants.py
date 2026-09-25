@@ -13,13 +13,9 @@ from __future__ import annotations
 # Application
 # ==========================================================
 
-APPLICATION_TITLE = (
-    "ScholarOS"
-)
+APPLICATION_TITLE = "ScholarOS"
 
-APPLICATION_VERSION = (
-    "1.0"
-)
+APPLICATION_VERSION = "1.0"
 
 # ==========================================================
 # Window
@@ -29,10 +25,7 @@ DEFAULT_WINDOW_WIDTH = 1280
 
 DEFAULT_WINDOW_HEIGHT = 800
 
-DEFAULT_WINDOW_SIZE = (
-    f"{DEFAULT_WINDOW_WIDTH}x"
-    f"{DEFAULT_WINDOW_HEIGHT}"
-)
+DEFAULT_WINDOW_SIZE = f"{DEFAULT_WINDOW_WIDTH}x{DEFAULT_WINDOW_HEIGHT}"
 
 MINIMUM_WINDOW_WIDTH = 800
 
@@ -42,9 +35,7 @@ MINIMUM_WINDOW_HEIGHT = 600
 # Typography
 # ==========================================================
 
-DEFAULT_FONT_FAMILY = (
-    "Segoe UI"
-)
+DEFAULT_FONT_FAMILY = "Segoe UI"
 
 DEFAULT_FONT_SIZE = 11
 
@@ -58,33 +49,19 @@ DEFAULT_SMALL_FONT_SIZE = 10
 # Window Aliases
 # ==========================================================
 
-APPLICATION_WIDTH = (
-    DEFAULT_WINDOW_WIDTH
-)
+APPLICATION_WIDTH = DEFAULT_WINDOW_WIDTH
 
-APPLICATION_HEIGHT = (
-    DEFAULT_WINDOW_HEIGHT
-)
+APPLICATION_HEIGHT = DEFAULT_WINDOW_HEIGHT
 
-MINIMUM_WIDTH = (
-    MINIMUM_WINDOW_WIDTH
-)
+MINIMUM_WIDTH = MINIMUM_WINDOW_WIDTH
 
-MINIMUM_HEIGHT = (
-    MINIMUM_WINDOW_HEIGHT
-)
+MINIMUM_HEIGHT = MINIMUM_WINDOW_HEIGHT
 
-DEFAULT_HEADING_SIZE = (
-    DEFAULT_HEADING_FONT_SIZE
-)
+DEFAULT_HEADING_SIZE = DEFAULT_HEADING_FONT_SIZE
 
-DEFAULT_TITLE_SIZE = (
-    DEFAULT_TITLE_FONT_SIZE
-)
+DEFAULT_TITLE_SIZE = DEFAULT_TITLE_FONT_SIZE
 
-DEFAULT_SMALL_SIZE = (
-    DEFAULT_SMALL_FONT_SIZE
-)
+DEFAULT_SMALL_SIZE = DEFAULT_SMALL_FONT_SIZE
 
 # ==========================================================
 # Layout
@@ -106,34 +83,20 @@ DEFAULT_SPACING = 8
 # Status
 # ==========================================================
 
-STATUS_READY_TEXT = (
-    "READY"
-)
+STATUS_READY_TEXT = "READY"
 
 # ==========================================================
 # Navigation
 # ==========================================================
 
-HOME_VIEW = (
-    "home"
-)
+HOME_VIEW = "home"
 
-CHAT_VIEW = (
-    "chat"
-)
+CHAT_VIEW = "chat"
 
-RESEARCH_VIEW = (
-    "research"
-)
+RESEARCH_VIEW = "research"
 
-KNOWLEDGE_VIEW = (
-    "knowledge"
-)
+KNOWLEDGE_VIEW = "knowledge"
 
-REPORTS_VIEW = (
-    "reports"
-)
+REPORTS_VIEW = "reports"
 
-SETTINGS_VIEW = (
-    "settings"
-)
+SETTINGS_VIEW = "settings"

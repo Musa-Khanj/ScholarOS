@@ -75,8 +75,4 @@ class GUIComponent(ABC):
         Developer representation.
         """
 
-        return (
-            f"{self.__class__.__name__}("
-            f"parent={self.parent!r}"
-            f")"
-        )
+        return f"{self.__class__.__name__}(parent={self.parent!r})"

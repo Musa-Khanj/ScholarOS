@@ -46,8 +46,4 @@ class GUIIntegration:
         self,
     ) -> str:
 
-        return (
-            f"{self.__class__.__name__}("
-            f"application={self.application!r}"
-            f")"
-        )
+        return f"{self.__class__.__name__}(application={self.application!r})"

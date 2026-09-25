@@ -75,9 +75,7 @@ class GUIHomeView(GUIView):
 
         subtitle = ttk.Label(
             self.frame,
-            text=(
-                "AI Research Operating System"
-            ),
+            text=("AI Research Operating System"),
         )
 
         subtitle.pack()

@@ -66,6 +66,4 @@ class WelcomeView:
         self,
     ) -> str:
 
-        return (
-            f"{self.__class__.__name__}()"
-        )
+        return f"{self.__class__.__name__}()"
