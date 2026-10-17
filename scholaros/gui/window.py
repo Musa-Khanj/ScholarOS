@@ -413,20 +413,78 @@ class GUIWindow:
         self,
         message: str,
         error: bool = False,
+        state: str | None = None,
     ) -> None:
         """Update the status bar message and optional error indication."""
         self._current_status = message
+        if state is not None:
+            self._status_state = state
+        elif error:
+            self._status_state = "failed"
+        elif message.strip().lower() in ("ready", "idle", "stopped"):
+            self._status_state = "idle"
+        elif "cancelled" in message.strip().lower():
+            self._status_state = "cancelled"
+        elif "failed" in message.strip().lower() or "error" in message.strip().lower():
+            self._status_state = "failed"
+        elif "completed" in message.strip().lower():
+            self._status_state = "completed"
+        elif (
+            "running" in message.strip().lower()
+            or "..." in message
+            or "generating" in message.strip().lower()
+            or "starting" in message.strip().lower()
+        ):
+            self._status_state = "running"
+        else:
+            self._status_state = "completed"
+
         if self._statusbar is not None:
+            color = "#212529"
+            if self._status_state == "failed" or error:
+                color = "#dc3545"
+            elif self._status_state == "cancelled":
+                color = "#fd7e14"
+            elif self._status_state == "running":
+                color = "#0d6efd"
+            elif self._status_state == "completed":
+                color = "#198754"
+
             try:
-                self._statusbar.configure(text=message)
+                self._statusbar.configure(text=message, foreground=color)
             except Exception:
-                pass
+                try:
+                    self._statusbar.configure(text=message)
+                except Exception:
+                    pass
+
+    @property
+    def status_state(self) -> str:
+        """Return the current execution state reflected by the status bar."""
+        return getattr(self, "_status_state", "idle")
 
     def get_status(
         self,
     ) -> str:
         """Return the current status bar message."""
         return getattr(self, "_current_status", STATUS_READY_TEXT)
+
+    def refresh(
+        self,
+    ) -> None:
+        """Refresh current active views and dashboard."""
+        for view in (
+            self._home_view,
+            self._research_view,
+            self._library_view,
+            self._plugins_view,
+            self._settings_view,
+        ):
+            if view is not None and hasattr(view, "refresh"):
+                try:
+                    view.refresh()
+                except Exception:
+                    pass
 
     # -----------------------------------------------------
     # Window
@@ -664,6 +722,7 @@ class GUIWindow:
         ttk.Button(
             frame,
             text="Refresh",
+            command=self.refresh,
         ).pack(
             side="right",
             padx=4,

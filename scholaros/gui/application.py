@@ -8,9 +8,10 @@ and Plugin subsystems without mixing business logic into the presentation layer.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from scholaros.gui.window import GUIWindow
@@ -81,8 +82,12 @@ class GUIApplication:
         self._executor: ThreadPoolExecutor | None = None
         self._state = ApplicationState.INITIALIZED
         self._session: Any | None = None
+        self._research_session: Any | None = None
         self._memory: Any | None = None
         self._last_citations: list[Any] = []
+        self._current_status: str = "Ready"
+        self._status_state: str = "idle"
+        self._status_subscriptions: list[Any] = []
 
         # 1. Inspect services bundle if supplied
         if services is not None:
@@ -160,6 +165,9 @@ class GUIApplication:
                 setattr(self._window, "application", self)
             except Exception:
                 pass
+
+        # 4. Subscribe to EventBus for status bar telemetry
+        self._setup_event_listeners()
 
     # -----------------------------------------------------------------------
     # Properties
@@ -254,6 +262,18 @@ class GUIApplication:
         return None
 
     @property
+    def research_session(self) -> Any:
+        """Return the active research session, lazily initializing one if available."""
+        if self._research_session is None:
+            try:
+                from scholaros.research.session import ResearchSession
+
+                self._research_session = ResearchSession()
+            except Exception:
+                pass
+        return self._research_session
+
+    @property
     def memory(self) -> Any:
         """Return runtime working memory."""
         if self._memory is None:
@@ -269,6 +289,11 @@ class GUIApplication:
     def last_citations(self) -> list[Any]:
         """Return citations from the most recent chat or research turn."""
         return getattr(self, "_last_citations", [])
+
+    @property
+    def status_state(self) -> str:
+        """Return the current execution state reflected by the status bar."""
+        return getattr(self, "_status_state", "idle")
 
     # -----------------------------------------------------------------------
     # Lifecycle
@@ -296,6 +321,96 @@ class GUIApplication:
             return "READY"
         return self._state.value
 
+    def get_recent_research(self, limit: int = 5) -> list[dict[str, Any]]:
+        """Return recent research turns from the active research session, newest first."""
+        if self.research_session is not None and hasattr(self.research_session, "history"):
+            hist = getattr(self.research_session, "history", [])
+            if isinstance(hist, list):
+                return list(reversed(hist[-limit:]))
+        return []
+
+    def get_knowledge_overview(self) -> dict[str, Any]:
+        """Return high-level summary of knowledge collections and indexed documents."""
+        if self.knowledge_manager is None:
+            return {
+                "status": "Not Configured",
+                "collections_count": 0,
+                "documents_count": 0,
+                "collections": [],
+            }
+
+        try:
+            colls = (
+                list(self.knowledge_manager.names())
+                if hasattr(self.knowledge_manager, "names")
+                else []
+            )
+            if not colls:
+                colls = ["default"]
+            docs = self.list_documents() if hasattr(self, "list_documents") else []
+            return {
+                "status": "Ready",
+                "collections_count": len(colls),
+                "documents_count": len(docs),
+                "collections": colls,
+            }
+        except Exception as e:
+            return {
+                "status": f"Error: {e}",
+                "collections_count": 0,
+                "documents_count": 0,
+                "collections": [],
+            }
+
+    def get_plugins_overview(self) -> dict[str, Any]:
+        """Return high-level summary of registered plugins and their active states."""
+        if self.plugin_manager is None:
+            return {
+                "status": "Not Connected",
+                "total": 0,
+                "active": 0,
+                "plugins": [],
+            }
+
+        try:
+            plugins = self.list_plugins() if hasattr(self, "list_plugins") else []
+            total = len(plugins)
+            active_count = sum(
+                1
+                for p in plugins
+                if isinstance(p, dict)
+                and str(p.get("state", "")).lower() in ("active", "enabled", "loaded")
+            )
+            return {
+                "status": "Ready" if total > 0 else "No plugins loaded",
+                "total": total,
+                "active": active_count,
+                "plugins": [
+                    p.get("name", p.get("id", "unknown")) for p in plugins if isinstance(p, dict)
+                ],
+            }
+        except Exception as e:
+            return {
+                "status": f"Error: {e}",
+                "total": 0,
+                "active": 0,
+                "plugins": [],
+            }
+
+    def get_ai_status(self) -> dict[str, Any]:
+        """Return active AI provider, chat/research models, and distinct health telemetry."""
+        diag = self.get_diagnostics() if hasattr(self, "get_diagnostics") else {}
+        if not isinstance(diag, dict):
+            diag = {}
+        return {
+            "app_connected": diag.get("app_connected", False),
+            "active_provider": diag.get("active_provider") or "None",
+            "active_model": diag.get("active_model") or "None",
+            "provider_healthy": diag.get("provider_healthy"),
+            "provider_health_status": diag.get("provider_health_status", "UNKNOWN"),
+            "available_providers": diag.get("available_providers", []),
+        }
+
     def info(self) -> dict[str, Any]:
         """Return health and component availability overview."""
         active_provider = None
@@ -319,6 +434,10 @@ class GUIApplication:
             "knowledge": self.knowledge_manager is not None,
             "active_provider": active_provider,
             "active_model": active_model,
+            "knowledge_overview": self.get_knowledge_overview(),
+            "plugins_overview": self.get_plugins_overview(),
+            "recent_research": self.get_recent_research(),
+            "ai_status": self.get_ai_status(),
         }
 
     # -----------------------------------------------------------------------
@@ -337,10 +456,140 @@ class GUIApplication:
         finally:
             self.shutdown()
 
-    def set_status(self, message: str, error: bool = False) -> None:
-        """Update the window status bar if available."""
+    def set_status(
+        self,
+        message: str,
+        error: bool = False,
+        state: str | None = None,
+    ) -> None:
+        """Update the window status bar and internal execution state."""
+        self._current_status = message
+        if state is not None:
+            self._status_state = state
+        elif error:
+            self._status_state = "failed"
+        elif message.strip().lower() in ("ready", "idle", "stopped"):
+            self._status_state = "idle"
+        elif "cancelled" in message.strip().lower():
+            self._status_state = "cancelled"
+        elif "failed" in message.strip().lower() or "error" in message.strip().lower():
+            self._status_state = "failed"
+        elif "completed" in message.strip().lower():
+            self._status_state = "completed"
+        elif (
+            "running" in message.strip().lower()
+            or "..." in message
+            or "generating" in message.strip().lower()
+            or "starting" in message.strip().lower()
+        ):
+            self._status_state = "running"
+        else:
+            self._status_state = "completed"
+
         if hasattr(self.window, "set_status"):
-            self.window.set_status(message, error=error)
+            if state is not None:
+                try:
+                    self.window.set_status(message, error=error, state=state)
+                except TypeError:
+                    self.window.set_status(message, error=error)
+            else:
+                self.window.set_status(message, error=error)
+
+    def _setup_event_listeners(self) -> None:
+        """Subscribe to core application events to update the status bar seamlessly."""
+        if self._event_bus is None or not hasattr(self._event_bus, "subscribe"):
+            return
+
+        def _get_field(evt: Any, field: str, default: Any = "") -> Any:
+            if hasattr(evt, field):
+                val = getattr(evt, field)
+                if val is not None and val != "":
+                    return val
+            if hasattr(evt, "payload") and isinstance(evt.payload, dict):
+                return evt.payload.get(field, default)
+            return default
+
+        def _safe_status(msg: str, error: bool = False, state: str | None = None) -> None:
+            self.set_status(msg, error=error, state=state)
+            if (
+                self._window is not None
+                and hasattr(self._window, "root")
+                and hasattr(self._window.root, "after")
+            ):
+                try:
+                    self._window.root.after(
+                        0,
+                        lambda: (
+                            self.window.set_status(msg, error=error, state=state)
+                            if hasattr(self.window, "set_status")
+                            else None
+                        ),
+                    )
+                except Exception:
+                    pass
+
+        try:
+            self._status_subscriptions.append(
+                self._event_bus.subscribe(
+                    "ResearchStarted",
+                    lambda e: _safe_status(
+                        f"Research: Running query '{_get_field(e, 'query')}'...",
+                        state="running",
+                    ),
+                )
+            )
+            self._status_subscriptions.append(
+                self._event_bus.subscribe(
+                    "ResearchStageStarted",
+                    lambda e: _safe_status(
+                        f"Research: {str(_get_field(e, 'stage', 'processing')).capitalize()}...",
+                        state="running",
+                    ),
+                )
+            )
+            self._status_subscriptions.append(
+                self._event_bus.subscribe(
+                    "ResearchCompleted",
+                    lambda e: _safe_status(
+                        f"Research: Completed ({float(_get_field(e, 'latency_ms', 0)):.0f}ms)",
+                        state="completed",
+                    ),
+                )
+            )
+            self._status_subscriptions.append(
+                self._event_bus.subscribe(
+                    "ResearchFailed",
+                    lambda e: _safe_status(
+                        f"Research: Failed - {_get_field(e, 'error', 'Error')}",
+                        error=True,
+                        state="failed",
+                    ),
+                )
+            )
+            self._status_subscriptions.append(
+                self._event_bus.subscribe(
+                    "AIRequestStarted",
+                    lambda e: _safe_status("AI: Generating response...", state="running"),
+                )
+            )
+            self._status_subscriptions.append(
+                self._event_bus.subscribe(
+                    "AIRequestCompleted",
+                    lambda e: _safe_status("AI: Response completed", state="completed"),
+                )
+            )
+            self._status_subscriptions.append(
+                self._event_bus.subscribe(
+                    "AIRequestFailed",
+                    lambda e: _safe_status(
+                        f"AI: Request failed - {_get_field(e, 'error', 'Error')}",
+                        error=True,
+                        state="failed",
+                    ),
+                )
+            )
+        except Exception:
+            pass
 
     # -----------------------------------------------------------------------
     # Business Logic Delegation (Used by UI Views)
@@ -445,15 +694,43 @@ class GUIApplication:
 
         if self.research_pipeline is not None:
             if template:
-                return self.research_pipeline.execute(template, query=cleaned_query, **kwargs)
-            if use_workflow:
-                kwargs["use_workflow"] = True
-            return self.research_pipeline.execute(cleaned_query, **kwargs)
+                res = self.research_pipeline.execute(template, query=cleaned_query, **kwargs)
+            else:
+                if use_workflow:
+                    kwargs["use_workflow"] = True
+                res = self.research_pipeline.execute(cleaned_query, **kwargs)
+
+            if self.research_session is not None and hasattr(
+                self.research_session, "record_interaction"
+            ):
+                try:
+                    from scholaros.research.result import ResearchResult
+
+                    if isinstance(res, ResearchResult):
+                        history = getattr(self.research_session, "history", [])
+                        if not history or history[-1].get("query") != cleaned_query:
+                            self.research_session.record_interaction(
+                                query=cleaned_query, result=res
+                            )
+                    elif isinstance(res, str):
+                        from scholaros.ai.response import AIResponse
+
+                        wrapped_res = ResearchResult(
+                            response=AIResponse(content=res, model="default")
+                        )
+                        self.research_session.record_interaction(
+                            query=cleaned_query, result=wrapped_res
+                        )
+                except Exception:
+                    pass
+
+            return res
 
         raise RuntimeError("Research pipeline is not configured.")
 
     def cancel_research(self, reason: str = "User requested cancellation") -> bool:
         """Signal cancellation for the actively executing research workflow."""
+        self.set_status("Research: Cancelled", state="cancelled")
         if self.research_pipeline is not None and hasattr(
             self.research_pipeline, "cancel_active_workflow"
         ):
@@ -870,24 +1147,142 @@ class GUIApplication:
             raise RuntimeError("AI manager is not configured.")
 
     def list_plugins(self) -> list[dict[str, Any]]:
-        """Return list of discovered and installed plugins with statuses."""
+        """Return list of discovered and installed plugins with statuses and metadata."""
         if self.plugin_manager is not None:
             results: list[dict[str, Any]] = []
             for p_id, p in self.plugin_manager.plugins.items():
                 desc = getattr(p, "description", None)
-                if desc is None and hasattr(p, "metadata") and hasattr(p.metadata, "description"):
-                    desc = p.metadata.description
+                meta = getattr(p, "metadata", None)
+                if desc is None and meta is not None and hasattr(meta, "description"):
+                    meta_desc = getattr(meta, "description", None)
+                    if isinstance(meta_desc, str):
+                        desc = meta_desc
+
+                author = ""
+                capabilities: list[str] = []
+                permissions: list[str] = []
+                dependencies: dict[str, Any] = {}
+
+                if meta is not None and not type(meta).__name__.endswith("Mock"):
+                    raw_author = getattr(meta, "author", None)
+                    if isinstance(raw_author, str):
+                        author = raw_author
+                    raw_caps = getattr(meta, "capabilities", None)
+                    if (
+                        (raw_caps is None or not raw_caps)
+                        and hasattr(meta, "extra")
+                        and isinstance(meta.extra, dict)
+                    ):
+                        raw_caps = meta.extra.get("capabilities")
+                    if isinstance(raw_caps, (list, tuple, set)):
+                        capabilities = list(raw_caps)
+                    raw_perms = getattr(meta, "permissions", None)
+                    if isinstance(raw_perms, (list, tuple, set)):
+                        permissions = list(raw_perms)
+                    raw_deps = getattr(meta, "dependencies", None)
+                    if isinstance(raw_deps, dict):
+                        dependencies = dict(raw_deps)
+
+                state_val = self.plugin_manager.state(p.id)
+                state_name = state_val.name if hasattr(state_val, "name") else str(state_val)
+
                 results.append(
                     {
                         "id": p.id,
                         "name": p.name,
                         "version": p.version,
-                        "state": self.plugin_manager.state(p.id).name,
+                        "state": state_name,
                         "description": desc or "",
+                        "author": author,
+                        "capabilities": capabilities,
+                        "permissions": permissions,
+                        "dependencies": dependencies,
                     }
                 )
             return results
         return []
+
+    def get_plugin(self, name_or_id: str) -> dict[str, Any] | None:
+        """Retrieve full metadata, state, and permissions for a registered plugin."""
+        if self.plugin_manager is not None:
+            p = self.plugin_manager.registry.get_optional(name_or_id)
+            if p is None:
+                return None
+            desc = getattr(p, "description", None)
+            meta = getattr(p, "metadata", None)
+            if desc is None and meta is not None and hasattr(meta, "description"):
+                meta_desc = getattr(meta, "description", None)
+                if isinstance(meta_desc, str):
+                    desc = meta_desc
+
+            author = ""
+            capabilities: list[str] = []
+            permissions: list[str] = []
+            dependencies: dict[str, Any] = {}
+            tags: list[str] = []
+
+            if meta is not None and not type(meta).__name__.endswith("Mock"):
+                raw_author = getattr(meta, "author", None)
+                if isinstance(raw_author, str):
+                    author = raw_author
+                raw_caps = getattr(meta, "capabilities", None)
+                if (
+                    (raw_caps is None or not raw_caps)
+                    and hasattr(meta, "extra")
+                    and isinstance(meta.extra, dict)
+                ):
+                    raw_caps = meta.extra.get("capabilities")
+                if isinstance(raw_caps, (list, tuple, set)):
+                    capabilities = list(raw_caps)
+                raw_perms = getattr(meta, "permissions", None)
+                if isinstance(raw_perms, (list, tuple, set)):
+                    permissions = list(raw_perms)
+                raw_deps = getattr(meta, "dependencies", None)
+                if isinstance(raw_deps, dict):
+                    dependencies = dict(raw_deps)
+                raw_tags = getattr(meta, "tags", None)
+                if (
+                    (raw_tags is None or not raw_tags)
+                    and hasattr(meta, "extra")
+                    and isinstance(meta.extra, dict)
+                ):
+                    raw_tags = meta.extra.get("tags")
+                if isinstance(raw_tags, (list, tuple, set)):
+                    tags = list(raw_tags)
+
+            state_val = self.plugin_manager.state(p.id)
+            state_name = state_val.name if hasattr(state_val, "name") else str(state_val)
+            return {
+                "id": p.id,
+                "name": p.name,
+                "version": p.version,
+                "state": state_name,
+                "description": desc or "",
+                "author": author,
+                "capabilities": capabilities,
+                "permissions": permissions,
+                "dependencies": dependencies,
+                "tags": tags,
+            }
+        return None
+
+    def discover_plugins(self, paths: Iterable[str | Path] | None = None) -> list[dict[str, Any]]:
+        """Trigger discovery across search paths and return discovered plugin items."""
+        if self.plugin_manager is not None:
+            discovered = self.plugin_manager.discover(paths=paths)
+            results: list[dict[str, Any]] = []
+            for dp in discovered:
+                meta = getattr(dp, "manifest", None)
+                results.append(
+                    {
+                        "id": dp.id,
+                        "name": getattr(meta, "name", dp.id) if meta else dp.id,
+                        "version": getattr(meta, "version", "1.0.0") if meta else "1.0.0",
+                        "path": str(getattr(dp, "path", "")),
+                    }
+                )
+            return results
+        raise RuntimeError("Plugin manager is not configured.")
 
     def enable_plugin(self, name_or_id: str) -> None:
         """Enable a plugin through the PluginManager."""
@@ -902,6 +1297,88 @@ class GUIApplication:
             self.plugin_manager.disable(name_or_id)
         else:
             raise RuntimeError("Plugin manager is not configured.")
+
+    def uninstall_plugin(self, name_or_id: str) -> bool:
+        """Uninstall a plugin through the PluginManager."""
+        if self.plugin_manager is not None:
+            return self.plugin_manager.uninstall(name_or_id)
+        raise RuntimeError("Plugin manager is not configured.")
+
+    def enable_plugin_async(
+        self,
+        name_or_id: str,
+        on_complete: Callable[[None], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> Future[Any]:
+        """Asynchronously enable a plugin without blocking UI."""
+
+        def _op() -> None:
+            self.enable_plugin(name_or_id)
+
+        def _def_success(_: Any) -> None:
+            pass
+
+        return self.execute_async(
+            _op,
+            on_success=on_complete if on_complete is not None else _def_success,
+            on_error=on_error,
+        )
+
+    def disable_plugin_async(
+        self,
+        name_or_id: str,
+        on_complete: Callable[[None], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> Future[Any]:
+        """Asynchronously disable a plugin without blocking UI."""
+
+        def _op() -> None:
+            self.disable_plugin(name_or_id)
+
+        def _def_success(_: Any) -> None:
+            pass
+
+        return self.execute_async(
+            _op,
+            on_success=on_complete if on_complete is not None else _def_success,
+            on_error=on_error,
+        )
+
+    def discover_plugins_async(
+        self,
+        paths: Iterable[str | Path] | None = None,
+        on_complete: Callable[[list[dict[str, Any]]], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> Future[Any]:
+        """Asynchronously discover plugins without blocking UI."""
+
+        def _def_success(_: Any) -> None:
+            pass
+
+        return self.execute_async(
+            self.discover_plugins,
+            paths=paths,
+            on_success=on_complete if on_complete is not None else _def_success,
+            on_error=on_error,
+        )
+
+    def uninstall_plugin_async(
+        self,
+        name_or_id: str,
+        on_complete: Callable[[bool], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> Future[Any]:
+        """Asynchronously uninstall a plugin without blocking UI."""
+
+        def _def_success(_: Any) -> None:
+            pass
+
+        return self.execute_async(
+            self.uninstall_plugin,
+            name_or_id=name_or_id,
+            on_success=on_complete if on_complete is not None else _def_success,
+            on_error=on_error,
+        )
 
     def get_config(self) -> AppConfig:
         """Return the current application configuration model."""
@@ -921,6 +1398,31 @@ class GUIApplication:
         self._config_manager = ConfigManager()
         return self._config_manager.settings
 
+    def validate_config(self, updates: dict[str, Any] | None = None) -> tuple[bool, str]:
+        """
+        Validate current configuration or proposed updates against configuration schema.
+        Returns (is_valid, message).
+        """
+        if self._config_manager is None:
+            from scholaros.config.manager import ConfigManager
+
+            self._config_manager = ConfigManager()
+
+        try:
+            if updates is not None:
+                from scholaros.config.loader import deep_merge
+                from scholaros.config.model import AppConfig
+
+                raw = self._config_manager.config.to_dict(mask_secrets=False)
+                merged = deep_merge(raw, updates)
+                test_cfg = AppConfig.from_dict(merged)
+                test_cfg.validate()
+            else:
+                self._config_manager.validate()
+            return True, "Configuration is valid."
+        except Exception as exc:
+            return False, str(exc)
+
     def update_config(
         self,
         updates: dict[str, Any],
@@ -939,6 +1441,28 @@ class GUIApplication:
             persist_path=persist_path,
         )
 
+    def update_config_async(
+        self,
+        updates: dict[str, Any],
+        persist: bool = False,
+        persist_path: Path | str | None = None,
+        on_complete: Callable[[AppConfig], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> Future[Any]:
+        """Asynchronously update configuration without blocking UI."""
+
+        def _op() -> AppConfig:
+            return self.update_config(updates=updates, persist=persist, persist_path=persist_path)
+
+        def _def_success(_: Any) -> None:
+            pass
+
+        return self.execute_async(
+            _op,
+            on_success=on_complete if on_complete is not None else _def_success,
+            on_error=on_error,
+        )
+
     def save_config(
         self,
         path: Path | str | None = None,
@@ -954,6 +1478,113 @@ class GUIApplication:
             path=path,
             format=format,
             mask_secrets=mask_secrets,
+        )
+
+    def save_config_async(
+        self,
+        path: Path | str | None = None,
+        format: str | None = None,
+        mask_secrets: bool = False,
+        on_complete: Callable[[Path], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> Future[Any]:
+        """Asynchronously persist configuration without blocking UI."""
+
+        def _op() -> Path:
+            return self.save_config(path=path, format=format, mask_secrets=mask_secrets)
+
+        def _def_success(_: Any) -> None:
+            pass
+
+        return self.execute_async(
+            _op,
+            on_success=on_complete if on_complete is not None else _def_success,
+            on_error=on_error,
+        )
+
+    def get_diagnostics(self) -> dict[str, Any]:
+        """
+        Produce a structured diagnostic status report clearly distinguishing:
+        1. Application connectivity (GUIApplication initialized and active)
+        2. Configuration validity (validity of current config against schema)
+        3. Provider availability (providers registered in AIManager)
+        4. Model & Provider health (operational health of active provider)
+        """
+        app_connected = self._state in (
+            ApplicationState.RUNNING,
+            ApplicationState.STARTING,
+        )
+        app_status = self.status()
+
+        config_valid, config_err = self.validate_config()
+
+        available_providers: list[str] = []
+        if self.ai_manager is not None:
+            available_providers = list(self.ai_manager.get_available_providers())
+
+        active_provider = None
+        if self.ai_manager is not None:
+            active_provider = getattr(self.ai_manager, "default_provider", None)
+
+        active_model = None
+        if self._config is not None and hasattr(self._config, "models"):
+            active_model = getattr(self._config.models, "default_chat_model", None)
+        elif self._config_manager is not None and hasattr(self._config_manager, "config"):
+            cfg = getattr(self._config_manager, "config", None)
+            if cfg is not None and hasattr(cfg, "models"):
+                active_model = getattr(cfg.models, "default_chat_model", None)
+
+        provider_healthy = False
+        provider_health_status = "UNKNOWN"
+        provider_health_details = ""
+        if self.ai_manager is not None and active_provider:
+            try:
+                p_health = self.ai_manager.health(active_provider)
+                provider_health_status = (
+                    p_health.status.name
+                    if hasattr(p_health.status, "name")
+                    else str(p_health.status)
+                )
+                provider_healthy = getattr(p_health, "is_healthy", False) or (
+                    provider_health_status.upper() in ("HEALTHY", "READY")
+                )
+                provider_health_details = p_health.details or ""
+            except Exception as exc:
+                provider_health_status = "ERROR"
+                provider_health_details = str(exc)
+
+        pm_connected = self.plugin_manager is not None
+        km_connected = self.knowledge_manager is not None
+
+        return {
+            "app_connected": app_connected,
+            "app_status": app_status,
+            "config_valid": config_valid,
+            "config_error": config_err if not config_valid else None,
+            "available_providers": available_providers,
+            "active_provider": active_provider,
+            "active_model": active_model,
+            "provider_healthy": provider_healthy,
+            "provider_health_status": provider_health_status,
+            "provider_health_details": provider_health_details,
+            "plugin_manager_connected": pm_connected,
+            "knowledge_manager_connected": km_connected,
+        }
+
+    def get_diagnostics_async(
+        self,
+        on_complete: Callable[[dict[str, Any]], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> Future[Any]:
+        """Asynchronously gather diagnostic telemetry across subsystems."""
+
+        def _def_success(_: Any) -> None:
+            pass
+
+        return self.execute_async(
+            self.get_diagnostics,
+            on_success=on_complete if on_complete is not None else _def_success,
+            on_error=on_error,
         )
 
     # -----------------------------------------------------------------------

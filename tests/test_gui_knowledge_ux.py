@@ -185,8 +185,12 @@ def test_library_view_async_search(test_root):
 
     view.search_async("transformers", on_complete=on_done)
 
-    test_root.after(3000, test_root.quit)
+    timer = test_root.after(3000, test_root.quit)
     test_root.mainloop()
+    try:
+        test_root.after_cancel(timer)
+    except Exception:
+        pass
 
     assert len(completed_results) == 1
     assert "Async result for transformers" in completed_results[0]["content"]
@@ -419,8 +423,12 @@ def test_library_view_async_add_and_reindex(test_root):
         on_complete=on_add_done,
     )
 
-    test_root.after(3000, test_root.quit)
+    timer = test_root.after(3000, test_root.quit)
     test_root.mainloop()
+    try:
+        test_root.after_cancel(timer)
+    except Exception:
+        pass
 
     assert len(added_box) == 1
     assert added_box[0]["title"] == "Async Paper"

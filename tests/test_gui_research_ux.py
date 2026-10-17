@@ -206,9 +206,12 @@ def test_research_view_async_execution(test_root, mock_window, sample_research_r
 
     view.run_research_async("Async Quantum Topic", on_complete=on_complete)
 
-    # Allow Tk event loop to process background thread result
-    test_root.after(3000, test_root.quit)
+    timer = test_root.after(3000, test_root.quit)
     test_root.mainloop()
+    try:
+        test_root.after_cancel(timer)
+    except Exception:
+        pass
 
     assert len(completed_result) == 1
     assert completed_result[0] == sample_research_result
@@ -389,8 +392,12 @@ def test_research_view_error_handling_asynchronous(test_root, mock_window):
 
     view.run_research_async("Failing async topic", on_error=on_error)
 
-    test_root.after(3000, test_root.quit)
+    timer = test_root.after(3000, test_root.quit)
     test_root.mainloop()
+    try:
+        test_root.after_cancel(timer)
+    except Exception:
+        pass
 
     assert len(caught_errors) == 1
     assert isinstance(caught_errors[0], RuntimeError)

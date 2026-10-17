@@ -94,7 +94,8 @@ class GUIView:
 
 class HomeView(GUIView):
     """
-    Welcome and summary landing view.
+    Welcome and summary landing view with Research Dashboard, AI/Provider Status,
+    Knowledge Library Overview, Plugins Overview, and Quick Actions.
     """
 
     def __init__(
@@ -112,9 +113,9 @@ class HomeView(GUIView):
         )
         self.on_navigate = on_navigate
 
-        # Quick Actions
+        # 1. Quick Actions Bar
         actions_frame = ttk.LabelFrame(self.frame, text="Quick Actions", padding=12)
-        actions_frame.pack(fill="x", pady=(0, 16))
+        actions_frame.pack(fill="x", pady=(0, 12))
 
         ttk.Button(
             actions_frame,
@@ -140,24 +141,373 @@ class HomeView(GUIView):
             command=lambda: self._navigate("settings"),
         ).pack(side="left", padx=6, pady=4)
 
-        # Status Summary
+        # 2. System Status Summary Header (preserved exact attribute and format)
         self._info_label = ttk.Label(
             self.frame,
             text="System Status: Ready. Connect to AI models and research pipelines above.",
             font=("TkDefaultFont", 10),
         )
-        self._info_label.pack(anchor="w", pady=8)
+        self._info_label.pack(anchor="w", pady=(0, 10))
+
+        # 3. Four Core Dashboard Cards (2x2 Grid)
+        cards_frame = ttk.Frame(self.frame)
+        cards_frame.pack(fill="both", expand=True)
+        cards_frame.columnconfigure(0, weight=1, uniform="home_cards")
+        cards_frame.columnconfigure(1, weight=1, uniform="home_cards")
+        cards_frame.rowconfigure(0, weight=1)
+        cards_frame.rowconfigure(1, weight=1)
+
+        # Card 1 (Top-Left): Research Dashboard
+        self._research_box = ttk.LabelFrame(cards_frame, text="🔬 Research Dashboard", padding=10)
+        self._research_box.grid(row=0, column=0, sticky="nsew", padx=(0, 6), pady=(0, 6))
+
+        self._research_status_label = ttk.Label(
+            self._research_box,
+            text="Recent Activity: Idle",
+            font=("TkDefaultFont", 9, "bold"),
+        )
+        self._research_status_label.pack(anchor="w", pady=(0, 4))
+
+        self._recent_research_text = tk.Text(
+            self._research_box,
+            wrap="word",
+            height=6,
+            font=("TkDefaultFont", 9),
+        )
+        self._recent_research_text.pack(fill="both", expand=True, pady=(0, 6))
+        self._recent_research_text.tag_configure(
+            "query", font=("TkDefaultFont", 9, "bold"), foreground="#0d6efd"
+        )
+        self._recent_research_text.tag_configure(
+            "meta", font=("TkDefaultFont", 8), foreground="#6c757d"
+        )
+        self._recent_research_text.tag_configure("body", font=("TkDefaultFont", 9))
+        self._recent_research_text.tag_configure(
+            "empty", font=("TkDefaultFont", 9, "italic"), foreground="#6c757d"
+        )
+        self._recent_research_text.insert(
+            "end",
+            "No recent research activity.\nStart a new query in Research Workspace.\n",
+            "empty",
+        )
+        self._recent_research_text.configure(state="disabled")
+
+        ttk.Button(
+            self._research_box,
+            text="Open Research Workspace →",
+            command=lambda: self._navigate("research"),
+        ).pack(anchor="e")
+
+        # Card 2 (Top-Right): AI & Provider Status
+        self._ai_box = ttk.LabelFrame(cards_frame, text="🤖 AI & Provider Status", padding=10)
+        self._ai_box.grid(row=0, column=1, sticky="nsew", padx=(6, 0), pady=(0, 6))
+
+        self._ai_provider_label = ttk.Label(
+            self._ai_box,
+            text="Active Provider: Not Connected",
+            font=("TkDefaultFont", 9),
+        )
+        self._ai_provider_label.pack(anchor="w", pady=2)
+
+        self._ai_model_label = ttk.Label(
+            self._ai_box,
+            text="Active Model: None",
+            font=("TkDefaultFont", 9),
+        )
+        self._ai_model_label.pack(anchor="w", pady=2)
+
+        self._ai_health_label = ttk.Label(
+            self._ai_box,
+            text="Provider Health: Not Checked",
+            font=("TkDefaultFont", 9, "bold"),
+            foreground="#6c757d",
+        )
+        self._ai_health_label.pack(anchor="w", pady=2)
+
+        self._ai_avail_label = ttk.Label(
+            self._ai_box,
+            text="Available Providers: None",
+            font=("TkDefaultFont", 8),
+            foreground="#6c757d",
+        )
+        self._ai_avail_label.pack(anchor="w", pady=2)
+
+        ttk.Button(
+            self._ai_box,
+            text="Configure AI Settings →",
+            command=lambda: self._navigate("settings"),
+        ).pack(anchor="e", pady=(8, 0))
+
+        # Card 3 (Bottom-Left): Knowledge Library Overview
+        self._knowledge_box = ttk.LabelFrame(
+            cards_frame, text="📚 Knowledge Library Overview", padding=10
+        )
+        self._knowledge_box.grid(row=1, column=0, sticky="nsew", padx=(0, 6), pady=(6, 0))
+
+        self._knowledge_docs_label = ttk.Label(
+            self._knowledge_box,
+            text="Indexed Documents: 0",
+            font=("TkDefaultFont", 9, "bold"),
+        )
+        self._knowledge_docs_label.pack(anchor="w", pady=2)
+
+        self._knowledge_colls_label = ttk.Label(
+            self._knowledge_box,
+            text="Collections: None",
+            font=("TkDefaultFont", 9),
+        )
+        self._knowledge_colls_label.pack(anchor="w", pady=2)
+
+        self._knowledge_status_label = ttk.Label(
+            self._knowledge_box,
+            text="Knowledge Subsystem: Not Connected",
+            font=("TkDefaultFont", 8),
+            foreground="#6c757d",
+        )
+        self._knowledge_status_label.pack(anchor="w", pady=2)
+
+        ttk.Button(
+            self._knowledge_box,
+            text="Open Knowledge Library →",
+            command=lambda: self._navigate("library"),
+        ).pack(anchor="e", pady=(8, 0))
+
+        # Card 4 (Bottom-Right): Plugins Overview
+        self._plugins_box = ttk.LabelFrame(cards_frame, text="🧩 Plugins Overview", padding=10)
+        self._plugins_box.grid(row=1, column=1, sticky="nsew", padx=(6, 0), pady=(6, 0))
+
+        self._plugins_total_label = ttk.Label(
+            self._plugins_box,
+            text="Registered Plugins: 0",
+            font=("TkDefaultFont", 9, "bold"),
+        )
+        self._plugins_total_label.pack(anchor="w", pady=2)
+
+        self._plugins_active_label = ttk.Label(
+            self._plugins_box,
+            text="Active Plugins: 0",
+            font=("TkDefaultFont", 9),
+        )
+        self._plugins_active_label.pack(anchor="w", pady=2)
+
+        self._plugins_status_label = ttk.Label(
+            self._plugins_box,
+            text="Plugin Manager: Not Connected",
+            font=("TkDefaultFont", 8),
+            foreground="#6c757d",
+        )
+        self._plugins_status_label.pack(anchor="w", pady=2)
+
+        ttk.Button(
+            self._plugins_box,
+            text="Manage Plugins →",
+            command=lambda: self._navigate("plugins"),
+        ).pack(anchor="e", pady=(8, 0))
+
         self._built = True
 
     def _navigate(self, target: str) -> None:
         if self.on_navigate:
             self.on_navigate(target)
 
+    def set_application(self, application: Any) -> None:
+        super().set_application(application)
+        self.refresh()
+
+    def show(self) -> None:
+        super().show()
+        self.refresh()
+
     def refresh(self) -> None:
-        if self.application:
-            info = self.application.info()
-            status_text = f"Status: {info.get('status', 'READY')} | AI: {'Yes' if info.get('ai') else 'No'} | RAG: {'Yes' if info.get('rag') else 'No'}"
-            self._info_label.configure(text=status_text)
+        if not self.application:
+            self._info_label.configure(
+                text="System Status: Ready. Connect to AI models and research pipelines above."
+            )
+            self._set_offline_state()
+            return
+
+        try:
+            info = self.application.info() if hasattr(self.application, "info") else {}
+        except Exception:
+            info = {}
+
+        if not isinstance(info, dict):
+            info = {}
+
+        status_text = (
+            f"Status: {info.get('status', 'READY')} | "
+            f"AI: {'Yes' if info.get('ai') else 'No'} | "
+            f"RAG: {'Yes' if info.get('rag') else 'No'}"
+        )
+        self._info_label.configure(text=status_text)
+
+        self._refresh_research(info)
+        self._refresh_ai(info)
+        self._refresh_knowledge(info)
+        self._refresh_plugins(info)
+
+    def _set_offline_state(self) -> None:
+        self._research_status_label.configure(text="Recent Activity: Disconnected")
+        self._recent_research_text.configure(state="normal")
+        self._recent_research_text.delete("1.0", "end")
+        self._recent_research_text.insert("end", "No active application connection.\n", "empty")
+        self._recent_research_text.configure(state="disabled")
+
+        self._ai_provider_label.configure(text="Active Provider: Disconnected")
+        self._ai_model_label.configure(text="Active Model: None")
+        self._ai_health_label.configure(text="Provider Health: Not Connected", foreground="#6c757d")
+        self._ai_avail_label.configure(text="Available Providers: None")
+
+        self._knowledge_docs_label.configure(text="Indexed Documents: 0")
+        self._knowledge_colls_label.configure(text="Collections: None")
+        self._knowledge_status_label.configure(text="Knowledge Subsystem: Not Connected")
+
+        self._plugins_total_label.configure(text="Registered Plugins: 0")
+        self._plugins_active_label.configure(text="Active Plugins: 0")
+        self._plugins_status_label.configure(text="Plugin Manager: Not Connected")
+
+    def _refresh_research(self, info: dict[str, Any]) -> None:
+        recent = None
+        if self.application is not None and hasattr(self.application, "get_recent_research"):
+            try:
+                recent = self.application.get_recent_research()
+            except Exception:
+                recent = None
+
+        if recent is None:
+            raw = info.get("recent_research")
+            if isinstance(raw, list):
+                recent = raw
+
+        self._recent_research_text.configure(state="normal")
+        self._recent_research_text.delete("1.0", "end")
+
+        if not isinstance(recent, list) or len(recent) == 0:
+            self._research_status_label.configure(text="Recent Activity: Idle")
+            self._recent_research_text.insert(
+                "end",
+                "No recent research activity.\nStart a new query in Research Workspace.\n",
+                "empty",
+            )
+        else:
+            self._research_status_label.configure(text=f"Recent Activity: {len(recent)} turn(s)")
+            for turn in recent[:5]:
+                if not isinstance(turn, dict):
+                    continue
+                q = turn.get("query", "Unknown query")
+                m = turn.get("model", "default")
+                srcs = turn.get("sources", [])
+                src_cnt = len(srcs) if isinstance(srcs, list) else 0
+                cits = turn.get("citations", [])
+                cit_cnt = len(cits) if isinstance(cits, list) else 0
+                snippet = turn.get("content", "")
+                if len(snippet) > 120:
+                    snippet = snippet[:120] + "..."
+
+                self._recent_research_text.insert("end", f"• {q}\n", "query")
+                self._recent_research_text.insert(
+                    "end", f"  Model: {m} | Sources: {src_cnt} | Citations: {cit_cnt}\n", "meta"
+                )
+                if snippet:
+                    self._recent_research_text.insert("end", f"  {snippet}\n\n", "body")
+        self._recent_research_text.configure(state="disabled")
+
+    def _refresh_ai(self, info: dict[str, Any]) -> None:
+        ai_stat = None
+        if self.application is not None and hasattr(self.application, "get_ai_status"):
+            try:
+                ai_stat = self.application.get_ai_status()
+            except Exception:
+                ai_stat = None
+
+        if not isinstance(ai_stat, dict):
+            raw = info.get("ai_status")
+            if isinstance(raw, dict):
+                ai_stat = raw
+            else:
+                ai_stat = {}
+
+        provider = ai_stat.get("active_provider") or info.get("active_provider") or "None"
+        model = ai_stat.get("active_model") or info.get("active_model") or "None"
+        healthy = ai_stat.get("provider_healthy")
+        health_status = ai_stat.get("provider_health_status") or "UNKNOWN"
+        avail = ai_stat.get("available_providers", [])
+        if not isinstance(avail, (list, tuple, set)):
+            avail = []
+
+        self._ai_provider_label.configure(text=f"Active Provider: {provider}")
+        self._ai_model_label.configure(text=f"Active Model: {model}")
+
+        if healthy is True:
+            self._ai_health_label.configure(text="Provider Health: HEALTHY", foreground="#198754")
+        elif healthy is False:
+            self._ai_health_label.configure(
+                text=f"Provider Health: {health_status}", foreground="#dc3545"
+            )
+        else:
+            self._ai_health_label.configure(
+                text=f"Provider Health: {health_status}", foreground="#6c757d"
+            )
+
+        avail_text = ", ".join(str(p) for p in avail) if avail else "None"
+        self._ai_avail_label.configure(text=f"Available: {avail_text}")
+
+    def _refresh_knowledge(self, info: dict[str, Any]) -> None:
+        k_overview = None
+        if self.application is not None and hasattr(self.application, "get_knowledge_overview"):
+            try:
+                k_overview = self.application.get_knowledge_overview()
+            except Exception:
+                k_overview = None
+
+        if not isinstance(k_overview, dict):
+            raw = info.get("knowledge_overview")
+            if isinstance(raw, dict):
+                k_overview = raw
+            else:
+                k_overview = {}
+
+        docs_count = k_overview.get("documents_count", 0)
+        if not isinstance(docs_count, int):
+            docs_count = 0
+        colls = k_overview.get("collections", [])
+        if not isinstance(colls, (list, tuple, set)):
+            colls = []
+        status = k_overview.get("status") or ("Ready" if info.get("knowledge") else "Not Connected")
+
+        self._knowledge_docs_label.configure(text=f"Indexed Documents: {docs_count}")
+        colls_str = ", ".join(str(c) for c in colls) if colls else "default"
+        self._knowledge_colls_label.configure(text=f"Collections: {colls_str} ({len(colls)} total)")
+        self._knowledge_status_label.configure(text=f"Knowledge Subsystem: {status}")
+
+    def _refresh_plugins(self, info: dict[str, Any]) -> None:
+        p_overview = None
+        if self.application is not None and hasattr(self.application, "get_plugins_overview"):
+            try:
+                p_overview = self.application.get_plugins_overview()
+            except Exception:
+                p_overview = None
+
+        if not isinstance(p_overview, dict):
+            raw = info.get("plugins_overview")
+            if isinstance(raw, dict):
+                p_overview = raw
+            else:
+                p_overview = {}
+
+        total = p_overview.get("total", 0)
+        if not isinstance(total, int):
+            total = 0
+        active = p_overview.get("active", 0)
+        if not isinstance(active, int):
+            active = 0
+        status = p_overview.get("status") or (
+            "Connected" if info.get("plugins") else "Not Connected"
+        )
+
+        self._plugins_total_label.configure(text=f"Registered Plugins: {total}")
+        self._plugins_active_label.configure(text=f"Active Plugins: {active}")
+        self._plugins_status_label.configure(text=f"Plugin Manager: {status}")
 
 
 class ChatView:
@@ -1352,6 +1702,8 @@ class LibraryView(GUIView):
 class PluginsView(GUIView):
     """
     Plugin inspection and management workspace.
+    Coordinates plugin discovery, lifecycle management (enable/disable),
+    manifest and permissions verification, and sandbox boundaries.
     """
 
     def __init__(
@@ -1366,6 +1718,7 @@ class PluginsView(GUIView):
             name="plugins",
             application=application,
         )
+        self._selected_plugin_id: str | None = None
 
         toolbar = ttk.Frame(self.frame)
         toolbar.pack(fill="x", pady=(0, 10))
@@ -1374,20 +1727,139 @@ class PluginsView(GUIView):
             toolbar,
             text="Refresh Plugins",
             command=self.refresh,
-        ).pack(side="left")
+        ).pack(side="left", padx=(0, 6))
 
-        # Plugin list
-        container = ttk.LabelFrame(self.frame, text="Registered Plugins", padding=10)
-        container.pack(fill="both", expand=True)
+        ttk.Button(
+            toolbar,
+            text="Discover Plugins",
+            command=self.discover_plugins,
+        ).pack(side="left", padx=(0, 6))
 
-        self._list_text = tk.Text(container, wrap="word", height=10)
+        ttk.Button(
+            toolbar,
+            text="Enable Plugin",
+            command=self.enable_selected_plugin,
+        ).pack(side="left", padx=(0, 6))
+
+        ttk.Button(
+            toolbar,
+            text="Disable Plugin",
+            command=self.disable_selected_plugin,
+        ).pack(side="left", padx=(0, 10))
+
+        self._status_label = ttk.Label(toolbar, text="", foreground="gray")
+        self._status_label.pack(side="left", fill="x", expand=True)
+
+        # Upper container: Registered Plugins Tree
+        tree_frame = ttk.LabelFrame(self.frame, text="Registered Plugins & Lifecycle", padding=6)
+        tree_frame.pack(fill="both", expand=True, pady=(0, 10))
+
+        columns = ("id", "name", "version", "state", "author")
+        self._plugin_tree = ttk.Treeview(
+            tree_frame,
+            columns=columns,
+            show="headings",
+            height=6,
+        )
+        self._plugin_tree.heading("id", text="Plugin ID")
+        self._plugin_tree.heading("name", text="Name")
+        self._plugin_tree.heading("version", text="Version")
+        self._plugin_tree.heading("state", text="State")
+        self._plugin_tree.heading("author", text="Author")
+
+        self._plugin_tree.column("id", width=140, anchor="w")
+        self._plugin_tree.column("name", width=180, anchor="w")
+        self._plugin_tree.column("version", width=70, anchor="center")
+        self._plugin_tree.column("state", width=90, anchor="center")
+        self._plugin_tree.column("author", width=120, anchor="w")
+
+        tree_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self._plugin_tree.yview)
+        self._plugin_tree.configure(yscrollcommand=tree_scroll.set)
+        self._plugin_tree.pack(side="left", fill="both", expand=True)
+        tree_scroll.pack(side="right", fill="y")
+        self._plugin_tree.bind("<<TreeviewSelect>>", self._on_tree_select)
+
+        # Lower container: Details & Legacy compatibility overview
+        detail_container = ttk.Frame(self.frame)
+        detail_container.pack(fill="both", expand=True)
+
+        # Details left pane: Metadata & Sandbox
+        meta_frame = ttk.LabelFrame(
+            detail_container, text="Plugin Capabilities & Sandbox", padding=8
+        )
+        meta_frame.pack(side="left", fill="both", expand=True, padx=(0, 6))
+
+        self._meta_display = tk.Text(meta_frame, wrap="word", height=6)
+        self._meta_display.pack(fill="both", expand=True)
+        self._meta_display.insert(
+            "1.0",
+            "Select a plugin to inspect capabilities and security sandbox permissions.\n",
+        )
+        self._meta_display.configure(state="disabled")
+
+        # Details right pane: Legacy compatibility overview text
+        log_frame = ttk.LabelFrame(detail_container, text="Plugin Registry Log", padding=8)
+        log_frame.pack(side="right", fill="both", expand=True)
+
+        self._list_text = tk.Text(log_frame, wrap="word", height=6)
         self._list_text.pack(fill="both", expand=True)
+
         self._built = True
         self.refresh()
 
+    @property
+    def selected_plugin_id(self) -> str | None:
+        """Return ID of the currently selected plugin."""
+        return self._selected_plugin_id
+
+    def _on_tree_select(self, event: Any = None) -> None:
+        selected = self._plugin_tree.selection()
+        if not selected:
+            return
+        item_id = selected[0]
+        self._selected_plugin_id = item_id
+        self.inspect_plugin(item_id)
+
+    def inspect_plugin(self, plugin_id: str) -> dict[str, Any] | None:
+        """Fetch plugin details and display metadata, permissions, and sandbox policies."""
+        if self.application is None:
+            return None
+        details = None
+        if hasattr(self.application, "get_plugin"):
+            details = self.application.get_plugin(plugin_id)
+
+        self._meta_display.configure(state="normal")
+        self._meta_display.delete("1.0", "end")
+
+        if details is not None:
+            self._meta_display.insert(
+                "end", f"Plugin: {details.get('name')} (ID: {details.get('id')})\n"
+            )
+            self._meta_display.insert(
+                "end", f"Version: {details.get('version')} | State: {details.get('state')}\n"
+            )
+            self._meta_display.insert("end", f"Author: {details.get('author') or 'Unknown'}\n")
+            self._meta_display.insert(
+                "end", f"Description: {details.get('description') or 'None'}\n"
+            )
+            perms = details.get("permissions") or ["default"]
+            self._meta_display.insert("end", f"Permissions: {', '.join(perms)}\n")
+            caps = details.get("capabilities") or ["general"]
+            self._meta_display.insert("end", f"Capabilities: {', '.join(caps)}\n")
+            self._meta_display.insert("end", "Sandbox: DefaultSandbox Enforced\n")
+        else:
+            self._meta_display.insert("end", f"No extended details available for '{plugin_id}'.\n")
+
+        self._meta_display.configure(state="disabled")
+        return details
+
     def refresh(self) -> list[dict[str, Any]]:
+        """Refresh registered plugin tree and backward-compatible list text."""
         self._list_text.configure(state="normal")
         self._list_text.delete("1.0", "end")
+
+        for item in self._plugin_tree.get_children():
+            self._plugin_tree.delete(item)
 
         if self.application is not None:
             raw_plugins = self.application.list_plugins()
@@ -1398,22 +1870,161 @@ class PluginsView(GUIView):
                 self._list_text.insert("end", "No plugins registered.\n")
             else:
                 for p in plugins:
+                    p_id = p.get("id", "plugin")
+                    name = p.get("name", p_id)
+                    ver = p.get("version", "1.0")
+                    state = p.get("state", "UNKNOWN")
+                    author = p.get("author", "")
+                    desc = p.get("description", "")
+                    self._plugin_tree.insert(
+                        "",
+                        "end",
+                        iid=p_id,
+                        values=(p_id, name, ver, state, author),
+                    )
                     self._list_text.insert(
                         "end",
-                        f"• {p.get('name', 'plugin')} (v{p.get('version', '1.0')}): "
-                        f"Status={p.get('state', 'UNKNOWN')} - {p.get('description', '')}\n",
+                        f"• {name} (v{ver}): Status={state} - {desc}\n",
                     )
             self._list_text.configure(state="disabled")
+
+            # Restore selection if still present
+            if self._selected_plugin_id and self._plugin_tree.exists(self._selected_plugin_id):
+                self._plugin_tree.selection_set(self._selected_plugin_id)
+                self.inspect_plugin(self._selected_plugin_id)
+
             return plugins
 
         self._list_text.insert("end", "Plugin manager not connected.\n")
         self._list_text.configure(state="disabled")
         return []
 
+    def enable_selected_plugin(
+        self,
+        async_op: bool = False,
+        on_complete: Callable[..., Any] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> None:
+        """Enable currently selected plugin synchronously or asynchronously."""
+        target_id = self._selected_plugin_id
+        if not target_id:
+            self._status_label.configure(text="No plugin selected to enable.")
+            return
+
+        def _on_done(_: Any = None) -> None:
+            self._status_label.configure(text=f"Plugin '{target_id}' enabled.")
+            self.refresh()
+            if on_complete:
+                on_complete(_)
+
+        def _on_err(exc: Exception) -> None:
+            self._status_label.configure(text=f"Error enabling plugin: {exc}")
+            if on_error:
+                on_error(exc)
+
+        if (
+            async_op
+            and self.application is not None
+            and hasattr(self.application, "enable_plugin_async")
+        ):
+            self.application.enable_plugin_async(
+                target_id,
+                on_complete=_on_done,
+                on_error=_on_err,
+            )
+        elif self.application is not None and hasattr(self.application, "enable_plugin"):
+            try:
+                self.application.enable_plugin(target_id)
+                _on_done()
+            except Exception as exc:
+                _on_err(exc)
+
+    def disable_selected_plugin(
+        self,
+        async_op: bool = False,
+        on_complete: Callable[..., Any] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> None:
+        """Disable currently selected plugin synchronously or asynchronously."""
+        target_id = self._selected_plugin_id
+        if not target_id:
+            self._status_label.configure(text="No plugin selected to disable.")
+            return
+
+        def _on_done(_: Any = None) -> None:
+            self._status_label.configure(text=f"Plugin '{target_id}' disabled.")
+            self.refresh()
+            if on_complete:
+                on_complete(_)
+
+        def _on_err(exc: Exception) -> None:
+            self._status_label.configure(text=f"Error disabling plugin: {exc}")
+            if on_error:
+                on_error(exc)
+
+        if (
+            async_op
+            and self.application is not None
+            and hasattr(self.application, "disable_plugin_async")
+        ):
+            self.application.disable_plugin_async(
+                target_id,
+                on_complete=_on_done,
+                on_error=_on_err,
+            )
+        elif self.application is not None and hasattr(self.application, "disable_plugin"):
+            try:
+                self.application.disable_plugin(target_id)
+                _on_done()
+            except Exception as exc:
+                _on_err(exc)
+
+    def discover_plugins(
+        self,
+        async_op: bool = False,
+        on_complete: Callable[..., Any] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> list[dict[str, Any]] | None:
+        """Discover plugins across configured paths synchronously or asynchronously."""
+
+        def _on_done(discovered: Any = None) -> None:
+            disc_count = len(discovered) if isinstance(discovered, (list, tuple)) else 0
+            self._status_label.configure(text=f"Discovery completed. Found {disc_count} plugin(s).")
+            self.refresh()
+            if on_complete:
+                on_complete(discovered)
+
+        def _on_err(exc: Exception) -> None:
+            self._status_label.configure(text=f"Discovery error: {exc}")
+            if on_error:
+                on_error(exc)
+
+        if (
+            async_op
+            and self.application is not None
+            and hasattr(self.application, "discover_plugins_async")
+        ):
+            self.application.discover_plugins_async(
+                on_complete=_on_done,
+                on_error=_on_err,
+            )
+            return None
+        elif self.application is not None and hasattr(self.application, "discover_plugins"):
+            try:
+                res = self.application.discover_plugins()
+                _on_done(res)
+                return res
+            except Exception as exc:
+                _on_err(exc)
+                return None
+        return None
+
 
 class SettingsView(GUIView):
     """
     Settings, model selection, and provider configuration workspace.
+    Coordinates application configuration loading, validation, secret masking,
+    persistence, and diagnostic inspection.
     """
 
     def __init__(
@@ -1524,15 +2135,30 @@ class SettingsView(GUIView):
 
         ttk.Button(
             action_row,
+            text="Validate Configuration",
+            command=self.validate_settings,
+        ).pack(side="left", padx=(0, 8))
+
+        ttk.Button(
+            action_row,
+            text="Run Diagnostics",
+            command=self.run_diagnostics,
+        ).pack(side="left", padx=(0, 8))
+
+        ttk.Button(
+            action_row,
             text="Reload Configuration",
             command=self.refresh,
-        ).pack(side="left")
+        ).pack(side="left", padx=(0, 12))
+
+        self._status_label = ttk.Label(action_row, text="", foreground="gray")
+        self._status_label.pack(side="left", fill="x", expand=True)
 
         # Telemetry info
         info_frame = ttk.LabelFrame(self.frame, text="System Environment & Diagnostics", padding=10)
         info_frame.pack(fill="both", expand=True)
 
-        self._info_display = tk.Text(info_frame, wrap="word", height=6)
+        self._info_display = tk.Text(info_frame, wrap="word", height=8)
         self._info_display.pack(fill="both", expand=True)
         self._built = True
         self.refresh()
@@ -1548,6 +2174,18 @@ class SettingsView(GUIView):
         """Populate form controls from active application configuration."""
         if self.application is None:
             return
+
+        # Update available providers in combobox if application provides them
+        if hasattr(self.application, "list_providers"):
+            try:
+                provs = self.application.list_providers()
+                if provs:
+                    current_vals = list(self._provider_combo["values"])
+                    combined = list(dict.fromkeys(list(provs) + current_vals))
+                    self._provider_combo["values"] = combined
+            except Exception:
+                pass
+
         if not hasattr(self.application, "get_config"):
             return
 
@@ -1580,11 +2218,28 @@ class SettingsView(GUIView):
         except Exception:
             pass
 
-    def save_settings(self) -> dict[str, Any] | None:
-        """Collect form values, update configuration, and persist to disk."""
+    def validate_settings(self) -> bool:
+        """Validate current form inputs against application configuration rules."""
+        limit_str = self._rag_limit_entry.get().strip()
+        try:
+            limit_val = int(limit_str)
+            if limit_val <= 0:
+                raise ValueError("Result limit must be a positive integer.")
+        except ValueError as exc:
+            self._status_label.configure(text=f"Validation error: {exc}")
+            return False
+
+        if not self._provider_combo.get().strip():
+            self._status_label.configure(text="Validation error: Provider cannot be empty.")
+            return False
+
+        if not self._chat_model_entry.get().strip():
+            self._status_label.configure(text="Validation error: Chat model cannot be empty.")
+            return False
+
         updates: dict[str, Any] = {
             "ai": {
-                "provider": self._provider_combo.get(),
+                "provider": self._provider_combo.get().strip(),
                 "base_url": self._base_url_entry.get().strip(),
             },
             "models": {
@@ -1593,7 +2248,50 @@ class SettingsView(GUIView):
             },
             "rag": {
                 "default_strategy": self._rag_strategy_combo.get(),
-                "default_limit": int(self._rag_limit_entry.get().strip() or "10"),
+                "default_limit": limit_val,
+            },
+            "storage": {
+                "workspace": self._workspace_entry.get().strip(),
+            },
+        }
+        api_key = self._api_key_entry.get().strip()
+        if api_key:
+            updates["ai"]["api_key"] = api_key
+
+        if self.application is not None and hasattr(self.application, "validate_config"):
+            val_res = self.application.validate_config(updates)
+            if isinstance(val_res, tuple) and len(val_res) == 2:
+                is_valid, msg = val_res
+                if not is_valid:
+                    self._status_label.configure(text=f"Validation error: {msg}")
+                    return False
+
+        self._status_label.configure(text="Configuration inputs are valid.")
+        return True
+
+    def save_settings(
+        self,
+        async_op: bool = False,
+        on_complete: Callable[..., Any] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> dict[str, Any] | None:
+        """Collect form values, update configuration, and persist to disk."""
+        if not self.validate_settings():
+            return None
+
+        limit_val = int(self._rag_limit_entry.get().strip() or "10")
+        updates: dict[str, Any] = {
+            "ai": {
+                "provider": self._provider_combo.get().strip(),
+                "base_url": self._base_url_entry.get().strip(),
+            },
+            "models": {
+                "default_chat_model": self._chat_model_entry.get().strip(),
+                "default_research_model": self._research_model_entry.get().strip(),
+            },
+            "rag": {
+                "default_strategy": self._rag_strategy_combo.get(),
+                "default_limit": limit_val,
             },
             "storage": {
                 "workspace": self._workspace_entry.get().strip(),
@@ -1604,18 +2302,81 @@ class SettingsView(GUIView):
         if api_key:
             updates["ai"]["api_key"] = api_key
 
-        if self.application is not None and hasattr(self.application, "update_config"):
+        def _on_done(_: Any = None) -> None:
+            self._status_label.configure(text="Settings updated and persisted successfully.")
+            if self.application is not None and hasattr(self.application, "set_status"):
+                self.application.set_status("Settings updated and persisted successfully.")
+            self.refresh()
+            if on_complete:
+                on_complete(updates)
+
+        def _on_err(exc: Exception) -> None:
+            self._status_label.configure(text=f"Failed to update settings: {exc}")
+            if self.application is not None and hasattr(self.application, "set_status"):
+                self.application.set_status(f"Failed to update settings: {exc}", error=True)
+            if on_error:
+                on_error(exc)
+
+        if (
+            async_op
+            and self.application is not None
+            and hasattr(self.application, "update_config_async")
+        ):
+            self.application.update_config_async(
+                updates,
+                persist=True,
+                on_complete=_on_done,
+                on_error=_on_err,
+            )
+            return updates
+        elif self.application is not None and hasattr(self.application, "update_config"):
             try:
                 self.application.update_config(updates, persist=True)
-                if hasattr(self.application, "set_status"):
-                    self.application.set_status("Settings updated and persisted successfully.")
-                self.refresh()
+                _on_done()
                 return updates
             except Exception as exc:
-                if hasattr(self.application, "set_status"):
-                    self.application.set_status(f"Failed to update settings: {exc}", error=True)
+                _on_err(exc)
                 return None
         return updates
+
+    def run_diagnostics(
+        self,
+        async_op: bool = False,
+        on_complete: Callable[..., Any] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> dict[str, Any] | None:
+        """Run deep diagnostics distinguishing connectivity, validity, availability, and health."""
+
+        def _on_done(diag: Any = None) -> None:
+            self._status_label.configure(text="Diagnostics check complete.")
+            self.refresh(diag_override=diag if isinstance(diag, dict) else None)
+            if on_complete:
+                on_complete(diag)
+
+        def _on_err(exc: Exception) -> None:
+            self._status_label.configure(text=f"Diagnostics error: {exc}")
+            if on_error:
+                on_error(exc)
+
+        if (
+            async_op
+            and self.application is not None
+            and hasattr(self.application, "get_diagnostics_async")
+        ):
+            self.application.get_diagnostics_async(
+                on_complete=_on_done,
+                on_error=_on_err,
+            )
+            return None
+        elif self.application is not None and hasattr(self.application, "get_diagnostics"):
+            try:
+                diag = self.application.get_diagnostics()
+                _on_done(diag)
+                return diag
+            except Exception as exc:
+                _on_err(exc)
+                return None
+        return None
 
     def apply_provider(self) -> None:
         chosen = self._provider_combo.get()
@@ -1629,7 +2390,7 @@ class SettingsView(GUIView):
                     self.application.set_status(f"Error switching provider: {exc}", error=True)
         self.refresh()
 
-    def refresh(self) -> None:
+    def refresh(self, diag_override: dict[str, Any] | None = None) -> None:
         self.load_from_config()
         self._info_display.configure(state="normal")
         self._info_display.delete("1.0", "end")
@@ -1673,11 +2434,38 @@ class SettingsView(GUIView):
             pm_status = "Connected" if info.get("plugins") else "Not Connected"
             km_status = "Ready" if (info.get("knowledge") or info.get("rag")) else "Offline"
 
+            # 1. Base runtime telemetry (preserves 100% compatibility with test_gui_runtime_verification.py)
             self._info_display.insert("end", f"Runtime: {runtime_connected}\n")
             self._info_display.insert("end", f"Provider: {provider_display}\n")
             self._info_display.insert("end", f"Model: {model_display}\n")
             self._info_display.insert("end", f"Plugin Manager: {pm_status}\n")
             self._info_display.insert("end", f"Knowledge: {km_status}\n")
+
+            # 2. Detailed Diagnostic breakdown separating Connectivity, Validity, Availability & Health
+            diag = diag_override
+            if diag is None and hasattr(self.application, "get_diagnostics"):
+                try:
+                    diag = self.application.get_diagnostics()
+                except Exception:
+                    diag = None
+
+            if isinstance(diag, dict):
+                cfg_val_text = (
+                    "Valid" if diag.get("config_valid") else f"Invalid ({diag.get('config_error')})"
+                )
+                self._info_display.insert("end", f"Config Validity: {cfg_val_text}\n")
+                avail_provs = diag.get("available_providers", [])
+                if isinstance(avail_provs, (list, tuple, set)):
+                    prov_str = ", ".join(str(x) for x in avail_provs) if avail_provs else "None"
+                else:
+                    prov_str = "None"
+                self._info_display.insert("end", f"Available Providers: {prov_str}\n")
+                p_health = diag.get("provider_health_status", "UNKNOWN")
+                self._info_display.insert("end", f"Provider Health: {p_health}\n")
+                if diag.get("provider_health_details"):
+                    self._info_display.insert(
+                        "end", f"Health Details: {diag.get('provider_health_details')}\n"
+                    )
         else:
             self._info_display.insert("end", "Application layer: Offline / Mock\n")
 

@@ -50,3 +50,20 @@ def manage_tk_root():
             original_destroy(tk._default_root)
         except tk.TclError:
             pass
+
+
+@pytest.fixture(autouse=True)
+def clean_tk_after_each_test():
+    """Cancel any pending Tk timer callbacks between tests to avoid cross-test interference."""
+    yield
+    default_root = getattr(tk, "_default_root", None)
+    if default_root is not None:
+        try:
+            for timer_id in default_root.tk.call("after", "info"):
+                try:
+                    default_root.after_cancel(timer_id)
+                except tk.TclError:
+                    pass
+            default_root.update_idletasks()
+        except tk.TclError:
+            pass

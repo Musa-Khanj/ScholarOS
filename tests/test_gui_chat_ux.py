@@ -226,9 +226,12 @@ def test_chat_view_send_message_async(test_root, mock_window, mock_ai_manager):
 
     view.send_message_async("Async query", on_complete=on_complete)
 
-    # Process events via Tk event loop
-    test_root.after(3000, test_root.quit)
+    timer = test_root.after(3000, test_root.quit)
     test_root.mainloop()
+    try:
+        test_root.after_cancel(timer)
+    except Exception:
+        pass
 
     assert len(completed_result) == 1
     assert completed_result[0] == "Artificial intelligence is the simulation of human intelligence."
@@ -282,8 +285,12 @@ def test_chat_error_surfacing_asynchronous(test_root, mock_window, mock_ai_manag
 
     view.send_message_async("Trigger network timeout", on_error=on_error)
 
-    test_root.after(3000, test_root.quit)
+    timer = test_root.after(3000, test_root.quit)
     test_root.mainloop()
+    try:
+        test_root.after_cancel(timer)
+    except Exception:
+        pass
 
     assert len(errors_caught) == 1
     assert isinstance(errors_caught[0], RuntimeError)
