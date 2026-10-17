@@ -38,9 +38,7 @@ class WelcomeView:
 
         ttk.Label(
             self._frame,
-            text=(
-                "How can I help you today?"
-            ),
+            text=("How can I help you today?"),
             font=(
                 "TkDefaultFont",
                 12,
@@ -62,6 +60,4 @@ class WelcomeView:
     def __repr__(
         self,
     ) -> str:
-        return (
-            f"{self.__class__.__name__}()"
-        )
+        return f"{self.__class__.__name__}()"

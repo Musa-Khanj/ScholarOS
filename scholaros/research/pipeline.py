@@ -35,7 +35,6 @@ if TYPE_CHECKING:
     from scholaros.research.workflow_engine import ResearchWorkflowEngine
 
 
-
 class ResearchPipeline:
     """
     Coordinates research workflows.
@@ -52,7 +51,9 @@ class ResearchPipeline:
         Initialize the research pipeline with AI prompt service and/or RAG service.
         """
         if ai is None and rag is None and workflow_engine is None:
-            raise ValueError("ResearchPipeline requires either an AIService, a RAGService, or both.")
+            raise ValueError(
+                "ResearchPipeline requires either an AIService, a RAGService, or both."
+            )
 
         self._ai = ai
         self._rag = rag
@@ -114,12 +115,12 @@ class ResearchPipeline:
         """Return the workflow engine if available or lazily created from RAG."""
         if self._workflow_engine is None and self._rag is not None:
             from scholaros.research.workflow_engine import ResearchWorkflowEngine
+
             self._workflow_engine = ResearchWorkflowEngine(
                 rag=self._rag,
                 event_bus=self._event_bus,
             )
         return self._workflow_engine
-
 
     def execute(
         self,
@@ -138,6 +139,11 @@ class ResearchPipeline:
                 **variables,
             )
 
+        if (variables.pop("use_workflow", False) or variables.pop("workflow", False)) and hasattr(
+            self, "execute_workflow"
+        ):
+            return self.execute_workflow(template, **variables)
+
         if self._rag is not None:
             return self.execute_rag(template, **variables)
 
@@ -148,9 +154,7 @@ class ResearchPipeline:
                 **variables,
             )
 
-        raise ResearchExecutionError(
-            f"No execution engine available for task '{template}'."
-        )
+        raise ResearchExecutionError(f"No execution engine available for task '{template}'.")
 
     def execute_rag(
         self,
@@ -288,6 +292,11 @@ class ResearchPipeline:
             session.record_interaction(query=query, result=result)
         return result
 
+    def cancel_active_workflow(self, reason: str = "User requested cancellation") -> bool:
+        """Cancel the currently active workflow if supported by workflow engine."""
+        if self._workflow_engine is not None and hasattr(self._workflow_engine, "cancel_active"):
+            return self._workflow_engine.cancel_active(reason)
+        return False
 
     def build(
         self,
@@ -299,7 +308,9 @@ class ResearchPipeline:
         executing it.
         """
         if self._ai is None:
-            raise AttributeError("ResearchPipeline has no AIService configured for building templates.")
+            raise AttributeError(
+                "ResearchPipeline has no AIService configured for building templates."
+            )
 
         return self._ai.build(
             template,

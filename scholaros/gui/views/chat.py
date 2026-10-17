@@ -46,7 +46,7 @@ class ChatPanel:
         self._history_label = ttk.Label(
             self._history_frame,
             text="Chat History",
-            font=(self._theme.font_family, self._theme.font_size)
+            font=(self._theme.font_family, self._theme.font_size),
         )
 
         self._history_label.pack(
@@ -113,6 +113,4 @@ class ChatPanel:
         self,
     ) -> str:
 
-        return (
-            f"{self.__class__.__name__}()"
-        )
+        return f"{self.__class__.__name__}()"

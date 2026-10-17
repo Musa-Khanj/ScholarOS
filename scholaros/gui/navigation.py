@@ -86,8 +86,4 @@ class GUINavigation:
         self,
     ) -> str:
 
-        return (
-            f"{self.__class__.__name__}("
-            f"workspace={self.workspace!r}"
-            f")"
-        )
+        return f"{self.__class__.__name__}(workspace={self.workspace!r})"

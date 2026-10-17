@@ -74,12 +74,10 @@ class InputBar:
     def get_text(
         self,
     ) -> str:
-        return (
-            self.input.get(
-                "1.0",
-                tk.END,
-            ).strip()
-        )
+        return self.input.get(
+            "1.0",
+            tk.END,
+        ).strip()
 
     def clear(
         self,
@@ -92,6 +90,4 @@ class InputBar:
     def __repr__(
         self,
     ) -> str:
-        return (
-            f"{self.__class__.__name__}()"
-        )
+        return f"{self.__class__.__name__}()"

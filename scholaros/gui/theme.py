@@ -42,6 +42,7 @@ class GUITheme:
     """
     Immutable ScholarOS visual theme.
     """
+
     def apply(
         self,
         root: tk.Tk,

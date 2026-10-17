@@ -49,22 +49,15 @@ class GUIWindow:
     ) -> None:
 
         if root is not None:
-
             self._root = root
 
         elif getattr(tk, "_default_root", None) is not None:
-
             self._root = getattr(tk, "_default_root")
 
         else:
-
             self._root = tk.Tk()
 
-        self._theme = (
-            theme
-            if theme is not None
-            else GUITheme()
-        )
+        self._theme = theme if theme is not None else GUITheme()
 
         self._built = False
 
@@ -77,11 +70,14 @@ class GUIWindow:
 
         self._welcome_view: WelcomeView | None = None
         self._chat_panel: ChatPanel | None = None
+        self._home_view: Any | None = None
+        self._chat_view: Any | None = None
         self._research_view: Any | None = None
         self._library_view: Any | None = None
         self._plugins_view: Any | None = None
         self._settings_view: Any | None = None
         self._current_status: str = STATUS_READY_TEXT
+        self._application: Any | None = None
 
     # -----------------------------------------------------
     # Properties
@@ -165,6 +161,18 @@ class GUIWindow:
         return self._chat_panel
 
     @property
+    def home_view(
+        self,
+    ) -> Any | None:
+        return self._home_view
+
+    @property
+    def chat_view(
+        self,
+    ) -> Any | None:
+        return self._chat_view
+
+    @property
     def research_view(
         self,
     ) -> Any | None:
@@ -187,6 +195,38 @@ class GUIWindow:
         self,
     ) -> Any | None:
         return self._settings_view
+
+    @property
+    def application(
+        self,
+    ) -> Any | None:
+        """Return the bound GUIApplication instance if injected."""
+        return self._application
+
+    def set_application(
+        self,
+        application: Any,
+    ) -> None:
+        """Inject GUIApplication reference and propagate to child views."""
+        self._application = application
+        for view in (
+            self._welcome_view,
+            self._chat_panel,
+            self._home_view,
+            self._chat_view,
+            self._research_view,
+            self._library_view,
+            self._plugins_view,
+            self._settings_view,
+        ):
+            if view is not None:
+                if hasattr(view, "set_application"):
+                    view.set_application(application)
+                elif hasattr(view, "application"):
+                    try:
+                        setattr(view, "application", application)
+                    except Exception:
+                        pass
 
     # -----------------------------------------------------
     # Public API
@@ -220,7 +260,32 @@ class GUIWindow:
     def show_home(
         self,
     ) -> None:
-        self.show_welcome()
+        if self._home_view is None and self._workspace is not None:
+            from scholaros.gui.views.workspace_views import HomeView
+
+            try:
+                self._home_view = HomeView(
+                    parent=self._workspace,
+                    application=self._application,
+                    on_navigate=self.show_view,
+                )
+                if hasattr(self._home_view, "frame") and hasattr(self._home_view.frame, "grid"):
+                    self._home_view.frame.grid(row=0, column=0, sticky="nsew")
+            except Exception:
+                pass
+
+        if self._home_view is not None:
+            if hasattr(self._home_view, "refresh"):
+                try:
+                    self._home_view.refresh()
+                except Exception:
+                    pass
+            if hasattr(self._home_view, "show"):
+                self._home_view.show()
+            elif hasattr(self._home_view, "frame") and hasattr(self._home_view.frame, "tkraise"):
+                self._home_view.frame.tkraise()
+        else:
+            self.show_welcome()
 
     def show_welcome(
         self,
@@ -232,8 +297,25 @@ class GUIWindow:
     def show_chat(
         self,
     ) -> None:
+        if self._chat_view is None and self._workspace is not None:
+            from scholaros.gui.views.workspace_views import ChatView
 
-        if self.chat_panel is not None:
+            try:
+                self._chat_view = ChatView(
+                    parent=self._workspace,
+                    application=self._application,
+                )
+                if hasattr(self._chat_view, "frame") and hasattr(self._chat_view.frame, "grid"):
+                    self._chat_view.frame.grid(row=0, column=0, sticky="nsew")
+            except Exception:
+                pass
+
+        if self._chat_view is not None:
+            if hasattr(self._chat_view, "show"):
+                self._chat_view.show()
+            elif hasattr(self._chat_view, "frame") and hasattr(self._chat_view.frame, "tkraise"):
+                self._chat_view.frame.tkraise()
+        elif self.chat_panel is not None:
             self.chat_panel.show()
 
     def show_research(
@@ -241,13 +323,18 @@ class GUIWindow:
     ) -> None:
         if self._research_view is None and self._workspace is not None:
             from scholaros.gui.views.workspace_views import ResearchView
-            self._research_view = ResearchView(parent=self._workspace)
+
+            self._research_view = ResearchView(
+                parent=self._workspace, application=self._application
+            )
             if hasattr(self._research_view, "frame") and hasattr(self._research_view.frame, "grid"):
                 self._research_view.frame.grid(row=0, column=0, sticky="nsew")
         if self._research_view is not None:
             if hasattr(self._research_view, "show"):
                 self._research_view.show()
-            elif hasattr(self._research_view, "frame") and hasattr(self._research_view.frame, "tkraise"):
+            elif hasattr(self._research_view, "frame") and hasattr(
+                self._research_view.frame, "tkraise"
+            ):
                 self._research_view.frame.tkraise()
 
     def show_library(
@@ -255,13 +342,16 @@ class GUIWindow:
     ) -> None:
         if self._library_view is None and self._workspace is not None:
             from scholaros.gui.views.workspace_views import LibraryView
-            self._library_view = LibraryView(parent=self._workspace)
+
+            self._library_view = LibraryView(parent=self._workspace, application=self._application)
             if hasattr(self._library_view, "frame") and hasattr(self._library_view.frame, "grid"):
                 self._library_view.frame.grid(row=0, column=0, sticky="nsew")
         if self._library_view is not None:
             if hasattr(self._library_view, "show"):
                 self._library_view.show()
-            elif hasattr(self._library_view, "frame") and hasattr(self._library_view.frame, "tkraise"):
+            elif hasattr(self._library_view, "frame") and hasattr(
+                self._library_view.frame, "tkraise"
+            ):
                 self._library_view.frame.tkraise()
 
     def show_plugins(
@@ -269,13 +359,16 @@ class GUIWindow:
     ) -> None:
         if self._plugins_view is None and self._workspace is not None:
             from scholaros.gui.views.workspace_views import PluginsView
-            self._plugins_view = PluginsView(parent=self._workspace)
+
+            self._plugins_view = PluginsView(parent=self._workspace, application=self._application)
             if hasattr(self._plugins_view, "frame") and hasattr(self._plugins_view.frame, "grid"):
                 self._plugins_view.frame.grid(row=0, column=0, sticky="nsew")
         if self._plugins_view is not None:
             if hasattr(self._plugins_view, "show"):
                 self._plugins_view.show()
-            elif hasattr(self._plugins_view, "frame") and hasattr(self._plugins_view.frame, "tkraise"):
+            elif hasattr(self._plugins_view, "frame") and hasattr(
+                self._plugins_view.frame, "tkraise"
+            ):
                 self._plugins_view.frame.tkraise()
 
     def show_settings(
@@ -283,13 +376,18 @@ class GUIWindow:
     ) -> None:
         if self._settings_view is None and self._workspace is not None:
             from scholaros.gui.views.workspace_views import SettingsView
-            self._settings_view = SettingsView(parent=self._workspace)
+
+            self._settings_view = SettingsView(
+                parent=self._workspace, application=self._application
+            )
             if hasattr(self._settings_view, "frame") and hasattr(self._settings_view.frame, "grid"):
                 self._settings_view.frame.grid(row=0, column=0, sticky="nsew")
         if self._settings_view is not None:
             if hasattr(self._settings_view, "show"):
                 self._settings_view.show()
-            elif hasattr(self._settings_view, "frame") and hasattr(self._settings_view.frame, "tkraise"):
+            elif hasattr(self._settings_view, "frame") and hasattr(
+                self._settings_view.frame, "tkraise"
+            ):
                 self._settings_view.frame.tkraise()
 
     def show_view(
@@ -315,20 +413,78 @@ class GUIWindow:
         self,
         message: str,
         error: bool = False,
+        state: str | None = None,
     ) -> None:
         """Update the status bar message and optional error indication."""
         self._current_status = message
+        if state is not None:
+            self._status_state = state
+        elif error:
+            self._status_state = "failed"
+        elif message.strip().lower() in ("ready", "idle", "stopped"):
+            self._status_state = "idle"
+        elif "cancelled" in message.strip().lower():
+            self._status_state = "cancelled"
+        elif "failed" in message.strip().lower() or "error" in message.strip().lower():
+            self._status_state = "failed"
+        elif "completed" in message.strip().lower():
+            self._status_state = "completed"
+        elif (
+            "running" in message.strip().lower()
+            or "..." in message
+            or "generating" in message.strip().lower()
+            or "starting" in message.strip().lower()
+        ):
+            self._status_state = "running"
+        else:
+            self._status_state = "completed"
+
         if self._statusbar is not None:
+            color = "#212529"
+            if self._status_state == "failed" or error:
+                color = "#dc3545"
+            elif self._status_state == "cancelled":
+                color = "#fd7e14"
+            elif self._status_state == "running":
+                color = "#0d6efd"
+            elif self._status_state == "completed":
+                color = "#198754"
+
             try:
-                self._statusbar.configure(text=message)
+                self._statusbar.configure(text=message, foreground=color)
             except Exception:
-                pass
+                try:
+                    self._statusbar.configure(text=message)
+                except Exception:
+                    pass
+
+    @property
+    def status_state(self) -> str:
+        """Return the current execution state reflected by the status bar."""
+        return getattr(self, "_status_state", "idle")
 
     def get_status(
         self,
     ) -> str:
         """Return the current status bar message."""
         return getattr(self, "_current_status", STATUS_READY_TEXT)
+
+    def refresh(
+        self,
+    ) -> None:
+        """Refresh current active views and dashboard."""
+        for view in (
+            self._home_view,
+            self._research_view,
+            self._library_view,
+            self._plugins_view,
+            self._settings_view,
+        ):
+            if view is not None and hasattr(view, "refresh"):
+                try:
+                    view.refresh()
+                except Exception:
+                    pass
 
     # -----------------------------------------------------
     # Window
@@ -505,6 +661,34 @@ class GUIWindow:
             sticky="nsew",
         )
 
+        try:
+            from scholaros.gui.views.workspace_views import ChatView, HomeView
+
+            self._home_view = HomeView(
+                parent=self._workspace,
+                application=self._application,
+                on_navigate=self.show_view,
+            )
+            if hasattr(self._home_view, "frame") and hasattr(self._home_view.frame, "grid"):
+                self._home_view.frame.grid(
+                    row=0,
+                    column=0,
+                    sticky="nsew",
+                )
+
+            self._chat_view = ChatView(
+                parent=self._workspace,
+                application=self._application,
+            )
+            if hasattr(self._chat_view, "frame") and hasattr(self._chat_view.frame, "grid"):
+                self._chat_view.frame.grid(
+                    row=0,
+                    column=0,
+                    sticky="nsew",
+                )
+        except Exception:
+            pass
+
         workspace.grid_rowconfigure(
             0,
             weight=1,
@@ -515,7 +699,7 @@ class GUIWindow:
             weight=1,
         )
 
-        self.show_welcome()
+        self.show_home()
 
     # -----------------------------------------------------
     # Toolbar
@@ -538,6 +722,7 @@ class GUIWindow:
         ttk.Button(
             frame,
             text="Refresh",
+            command=self.refresh,
         ).pack(
             side="right",
             padx=4,
@@ -595,6 +780,8 @@ class GUIWindow:
             f"root={self.root!r}, "
             f"theme={self.theme!r}, "
             f"welcome_view={self.welcome_view!r}, "
-            f"chat_panel={self.chat_panel!r}"
+            f"chat_panel={self.chat_panel!r}, "
+            f"home_view={self.home_view!r}, "
+            f"chat_view={self.chat_view!r}"
             f")"
         )

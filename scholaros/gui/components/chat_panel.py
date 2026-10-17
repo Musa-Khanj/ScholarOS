@@ -29,10 +29,8 @@ class ChatPanel:
             parent,
         )
 
-        self._conversation = (
-            ConversationView(
-                self._frame,
-            )
+        self._conversation = ConversationView(
+            self._frame,
         )
 
         self._conversation.pack(
@@ -41,10 +39,8 @@ class ChatPanel:
             pady=(0, 10),
         )
 
-        self._input_bar = (
-            InputBar(
-                self._frame,
-            )
+        self._input_bar = InputBar(
+            self._frame,
         )
 
         self._input_bar.pack(
@@ -78,6 +74,4 @@ class ChatPanel:
     def __repr__(
         self,
     ) -> str:
-        return (
-            f"{self.__class__.__name__}()"
-        )
+        return f"{self.__class__.__name__}()"

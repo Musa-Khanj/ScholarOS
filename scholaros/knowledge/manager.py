@@ -189,7 +189,11 @@ class KnowledgeManager:
         Add a document to a collection, chunking, embedding into VectorStore, and indexing it.
         """
         key = collection_id or collection_name
-        policy = DuplicatePolicy(duplicate_policy) if isinstance(duplicate_policy, str) else duplicate_policy
+        policy = (
+            DuplicatePolicy(duplicate_policy)
+            if isinstance(duplicate_policy, str)
+            else duplicate_policy
+        )
 
         coll = self.get_or_create_collection(key)
         existing_doc = coll.get(document.identifier)
@@ -250,7 +254,8 @@ class KnowledgeManager:
     def remove_document(self, document_id: str, collection_name: str = "default") -> bool:
         """Remove a document and its chunks from storage, inverted index, and vector store."""
         coll = self._registry.get(collection_name) if self.contains(collection_name) else None
-        if coll:
+        existed_in_coll = coll.contains(document_id) if coll else False
+        if coll and existed_in_coll:
             coll.remove(document_id)
 
         # Remove chunks from inverted index
@@ -270,6 +275,14 @@ class KnowledgeManager:
                 pass
 
         removed = self.storage.delete_document(document_id, collection_name=collection_name)
+        if existed_in_coll:
+            removed = True
+            # Ensure storage chunks are cleaned up if storage shared the collection
+            if hasattr(self.storage, "_doc_to_chunks") and hasattr(self.storage, "_chunks"):
+                chunk_ids = self.storage._doc_to_chunks.pop(document_id, set())
+                for cid in chunk_ids:
+                    self.storage._chunks.pop(cid, None)
+
         if removed:
             self._publish(DocumentRemoved(document_id=document_id, collection_name=collection_name))
         return removed
@@ -313,6 +326,15 @@ class KnowledgeManager:
         elif self.embedding_provider is not None:
             emb_obj = self.embedding_provider.embed(chunk.content)
             vector = list(emb_obj.vector)
+        elif self.ai_provider is not None and hasattr(self.ai_provider, "embed"):
+            try:
+                from scholaros.ai.embedding import EmbeddingRequest
+
+                emb_req = EmbeddingRequest.from_text(chunk.content)
+                emb_resp = self.ai_provider.embed(emb_req)
+                vector = list(emb_resp.vector)
+            except Exception:
+                pass
 
         if vector is not None:
             emb_entry = Embedding(
@@ -376,9 +398,9 @@ class KnowledgeManager:
         retriever = getattr(strategy, "retriever", None)
         if retriever is None:
             from scholaros.retrieval.retriever import Retriever
+
             retriever = Retriever(manager, name=strategy_name)
         return RetrievalPipeline(retriever=retriever, **kwargs)
-
 
     # ---------------------------------------------------------
     # Search API

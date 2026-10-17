@@ -51,11 +51,13 @@ class ResearchWorkflowEngine:
         self._planner = planner or ResearchPlanner()
         if executor is None:
             from scholaros.execution.workflow_executor import WorkflowExecutor as DefaultExecutor
+
             self._executor = DefaultExecutor(event_bus=event_bus)
         else:
             self._executor = executor
         self._memory = memory
         self._event_bus = event_bus
+        self._active_context: WorkflowContext | None = None
 
     @property
     def rag(self) -> RAGService | RAGPipeline:
@@ -82,6 +84,18 @@ class ResearchWorkflowEngine:
         """Return the attached EventBus if configured."""
         return self._event_bus
 
+    @property
+    def active_context(self) -> WorkflowContext | None:
+        """Return the active workflow context if executing."""
+        return self._active_context
+
+    def cancel_active(self, reason: str = "User requested cancellation") -> bool:
+        """Signal cancellation for the actively executing workflow."""
+        if self._active_context is not None and not self._active_context.is_cancelled:
+            self._active_context.cancel(reason)
+            return True
+        return False
+
     def execute(
         self,
         query: str,
@@ -100,6 +114,7 @@ class ResearchWorkflowEngine:
             data=initial_data.copy() if initial_data else {},
             status=WorkflowStatus.EXECUTING,
         )
+        self._active_context = context
 
         if self._event_bus is not None:
             try:
@@ -145,7 +160,11 @@ class ResearchWorkflowEngine:
                         sub_resp = self._rag.execute(rag_req)
 
                     for r in getattr(sub_resp, "results", ()):
-                        doc_id = str(getattr(r.document, "id", None) or id(r)) if hasattr(r, "document") else str(id(r))
+                        doc_id = (
+                            str(getattr(r.document, "id", None) or id(r))
+                            if hasattr(r, "document")
+                            else str(id(r))
+                        )
                         if doc_id not in seen_doc_ids:
                             seen_doc_ids.add(doc_id)
                             all_results.append(r)
@@ -163,7 +182,9 @@ class ResearchWorkflowEngine:
                 evidence_summary = {
                     "total_sources": len(results),
                     "document_ids": [
-                        getattr(r.document, "id", str(i)) for i, r in enumerate(results) if hasattr(r, "document")
+                        getattr(r.document, "id", str(i))
+                        for i, r in enumerate(results)
+                        if hasattr(r, "document")
                     ],
                 }
                 return {"analysis": evidence_summary}
@@ -259,6 +280,8 @@ class ResearchWorkflowEngine:
             if isinstance(exc, ResearchExecutionError):
                 raise
             raise ResearchExecutionError(f"Research workflow execution failed: {exc}") from exc
+        finally:
+            self._active_context = None
 
     def _handle_cancellation(self, context: WorkflowContext) -> ResearchResult:
         """Produce a cancelled ResearchResult and publish cancellation event."""
@@ -303,10 +326,12 @@ class ResearchWorkflowEngine:
             col = self._memory.get("research_history")
             if col is None:
                 from scholaros.memory.collection import MemoryCollection
+
                 col = MemoryCollection()
                 self._memory.register("research_history", col)
 
             from scholaros.memory.entry import MemoryEntry
+
             synthesis_resp = context.data.get("synthesis_response")
             content_snippet = synthesis_resp.content[:500] if synthesis_resp else ""
             citations = context.data.get("citations", [])

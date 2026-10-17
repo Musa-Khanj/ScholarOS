@@ -73,10 +73,7 @@ class GUIChatView(GUIView):
 
         description = ttk.Label(
             self.frame,
-            text=(
-                "ScholarOS conversational interface.\n"
-                "Future AI conversations will appear here."
-            ),
+            text=("ScholarOS conversational interface.\nFuture AI conversations will appear here."),
         )
 
         description.pack(

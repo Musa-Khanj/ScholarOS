@@ -50,8 +50,4 @@ class SidebarButton:
     def __repr__(
         self,
     ) -> str:
-        return (
-            f"{self.__class__.__name__}("
-            f"text={self.widget.cget('text')!r}"
-            f")"
-        )
+        return f"{self.__class__.__name__}(text={self.widget.cget('text')!r})"

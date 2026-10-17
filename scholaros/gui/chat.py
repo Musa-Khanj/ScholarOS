@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk
+from typing import Any
 
 
 class GUIChat:
@@ -73,6 +74,28 @@ class GUIChat:
             pady=(10, 5),
         )
 
+        # Visual styling tags for user/assistant separation and citations
+        history.tag_configure(
+            "sender_you",
+            font=("TkDefaultFont", 10, "bold"),
+            foreground="#0d6efd",
+        )
+        history.tag_configure(
+            "sender_scholaros",
+            font=("TkDefaultFont", 10, "bold"),
+            foreground="#198754",
+        )
+        history.tag_configure(
+            "sender_system",
+            font=("TkDefaultFont", 10, "bold"),
+            foreground="#dc3545",
+        )
+        history.tag_configure(
+            "citations",
+            font=("TkDefaultFont", 9, "italic"),
+            foreground="#6c757d",
+        )
+
         self._history = history
 
     def _build_input(self):
@@ -108,8 +131,22 @@ class GUIChat:
             padx=(8, 0),
         )
 
+        # Bind Enter to invoke send button, Shift+Enter for multiline
+        entry.bind("<Return>", self._on_enter_pressed)
+        entry.bind("<Shift-Return>", self._on_shift_enter)
+
         self._input = entry
         self._send_button = button
+
+    def _on_enter_pressed(self, event: tk.Event[Any]) -> str:
+        """Trigger send button on Enter without inserting a newline."""
+        if self._send_button is not None:
+            self._send_button.invoke()
+        return "break"
+
+    def _on_shift_enter(self, event: tk.Event[Any]) -> None:
+        """Allow Shift+Enter to insert a normal newline in multi-line prompts."""
+        return None
 
     def clear(self):
 
@@ -130,16 +167,40 @@ class GUIChat:
         self,
         sender: str,
         message: str,
+        citations: list[Any] | tuple[Any, ...] | None = None,
     ) -> None:
 
         self.history.configure(
             state="normal",
         )
 
+        tag = f"sender_{sender.lower()}"
+        if hasattr(self.history, "tag_names") and tag in self.history.tag_names():
+            self.history.insert(
+                "end",
+                f"{sender}: ",
+                tag,
+            )
+        else:
+            self.history.insert(
+                "end",
+                f"{sender}: ",
+            )
+
         self.history.insert(
             "end",
-            f"{sender}: {message}\n\n",
+            f"{message}\n\n",
         )
+
+        if citations and isinstance(citations, (list, tuple)):
+            clean_cites = [str(c) for c in citations if c is not None and str(c).strip()]
+            if clean_cites:
+                cite_str = ", ".join(clean_cites)
+                self.history.insert(
+                    "end",
+                    f"  📚 Sources: {cite_str}\n\n",
+                    "citations",
+                )
 
         self.history.configure(
             state="disabled",
